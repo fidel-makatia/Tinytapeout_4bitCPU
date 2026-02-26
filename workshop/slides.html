@@ -899,11 +899,250 @@ cp info.yaml → info.yaml</code></pre>
 </section>
 
 <!-- ============================================================ -->
+<!-- VERILOG PLAYGROUND (ZERO INSTALL) -->
+<!-- ============================================================ -->
+<section class="section-slide">
+  <h1>Getting Started</h1>
+  <h2>Zero-Install Verilog Playground</h2>
+</section>
+
+<section>
+  <h2>No Install Needed: Browser-Based Tools</h2>
+  <p class="small">Before installing anything, you can write and simulate Verilog <strong>right in your browser</strong>:</p>
+  <table>
+    <tr><th>Tool</th><th>What it does</th><th>Best for</th></tr>
+    <tr>
+      <td><a href="https://www.edaplayground.com/">EDA Playground</a></td>
+      <td>Write Verilog + testbench, simulate with Icarus Verilog, view waveforms</td>
+      <td>General simulation (our primary tool)</td>
+    </tr>
+    <tr>
+      <td><a href="https://hdlbits.01xz.net/">HDLBits</a></td>
+      <td>170+ interactive Verilog exercises with auto-grading</td>
+      <td>Learning Verilog step-by-step</td>
+    </tr>
+    <tr>
+      <td><a href="https://digitaljs.tilk.eu/">DigitalJS Online</a></td>
+      <td>Paste Verilog, see synthesized gate-level schematic, simulate interactively</td>
+      <td>Visualizing how code becomes gates</td>
+    </tr>
+    <tr>
+      <td><a href="https://wokwi.com/">Wokwi</a></td>
+      <td>Drag-and-drop logic gate editor, simulate in browser</td>
+      <td>Absolute beginners (no code needed)</td>
+    </tr>
+  </table>
+</section>
+
+<section>
+  <h2>Try It Now: EDA Playground</h2>
+  <div class="two-col">
+    <div>
+      <p class="small"><strong>Steps:</strong></p>
+      <ol class="small">
+        <li>Go to <a href="https://www.edaplayground.com/">edaplayground.com</a></li>
+        <li>Sign up (free, takes 30 seconds)</li>
+        <li>Set <strong>Testbench + Design</strong> language to <code>Verilog</code></li>
+        <li>Set simulator to <strong>Icarus Verilog 12.0</strong></li>
+        <li>Check <strong>"Open EPWave after run"</strong> for waveforms</li>
+        <li>Paste the code on the right →</li>
+        <li>Click <strong>Run</strong></li>
+      </ol>
+      <div class="box small" style="margin-top: 8px;">
+        <p>You should see <code>count</code> going 0, 1, 2, 3... in the waveform viewer!</p>
+      </div>
+    </div>
+    <div>
+      <p class="small"><strong>Design tab (left):</strong></p>
+      <pre><code class="language-verilog" style="font-size: 0.65em;">module counter (
+  input  wire clk,
+  input  wire rst_n,
+  output reg [3:0] count
+);
+  always @(posedge clk or negedge rst_n)
+    if (!rst_n)
+      count <= 4'b0000;
+    else
+      count <= count + 1;
+endmodule</code></pre>
+      <p class="small"><strong>Testbench tab (right):</strong></p>
+      <pre><code class="language-verilog" style="font-size: 0.65em;">module tb;
+  reg clk = 0, rst_n = 0;
+  wire [3:0] count;
+  counter uut(.clk(clk),
+    .rst_n(rst_n), .count(count));
+  always #5 clk = ~clk;
+  initial begin
+    $dumpfile("dump.vcd");
+    $dumpvars(0, tb);
+    #12 rst_n = 1;
+    #200 $finish;
+  end
+endmodule</code></pre>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Try It Now: DigitalJS</h2>
+  <div class="two-col">
+    <div>
+      <div class="box box-blue">
+        <p class="small"><strong>See your Verilog as gates!</strong></p>
+        <ol class="small">
+          <li>Go to <a href="https://digitaljs.tilk.eu/">digitaljs.tilk.eu</a></li>
+          <li>Paste any Verilog in the editor</li>
+          <li>Click <strong>Synthesize</strong></li>
+          <li>See the actual gate-level schematic</li>
+          <li>Click gates to probe signals</li>
+          <li>Click <strong>Simulate</strong> to step through</li>
+        </ol>
+      </div>
+      <div class="box box-green" style="margin-top: 8px;">
+        <p class="small">Uses <strong>Yosys compiled to WebAssembly</strong> — real synthesis running in your browser!</p>
+      </div>
+    </div>
+    <div>
+      <p class="small">Try pasting this — see it become AND/OR/XOR gates:</p>
+      <pre><code class="language-verilog" style="font-size: 0.65em;">module alu (
+  input  [3:0] a,
+  input  [3:0] b,
+  input  [1:0] op,
+  output reg [3:0] result
+);
+  always @(*) begin
+    case (op)
+      2'b00: result = a + b;
+      2'b01: result = a - b;
+      2'b10: result = a & b;
+      2'b11: result = a | b;
+    endcase
+  end
+endmodule</code></pre>
+      <p class="tiny">You'll see the adder, subtractor, AND/OR gates, and the MUX that selects between them — exactly like our Nibble CPU ALU!</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Practice Exercises: HDLBits</h2>
+  <div class="two-col">
+    <div>
+      <div class="box box-blue">
+        <p class="small"><strong>Recommended warm-up path:</strong></p>
+        <ol class="small">
+          <li><a href="https://hdlbits.01xz.net/wiki/Wire">Wire</a> — the simplest module</li>
+          <li><a href="https://hdlbits.01xz.net/wiki/Notgate">NOT gate</a></li>
+          <li><a href="https://hdlbits.01xz.net/wiki/Andgate">AND gate</a></li>
+          <li><a href="https://hdlbits.01xz.net/wiki/Mux2to1v">4-bit MUX</a></li>
+          <li><a href="https://hdlbits.01xz.net/wiki/Hadd">Half adder</a></li>
+          <li><a href="https://hdlbits.01xz.net/wiki/Fadd">Full adder</a></li>
+          <li><a href="https://hdlbits.01xz.net/wiki/Dff">D flip-flop</a></li>
+          <li><a href="https://hdlbits.01xz.net/wiki/Count15">4-bit counter</a></li>
+        </ol>
+        <p class="tiny" style="margin-top:6px;">These 8 exercises cover every building block in our CPU!</p>
+      </div>
+    </div>
+    <div>
+      <div class="box">
+        <p class="small"><strong>How it works:</strong></p>
+        <ul class="small">
+          <li>Go to <a href="https://hdlbits.01xz.net/">hdlbits.01xz.net</a></li>
+          <li>Each problem gives you a description</li>
+          <li>You write Verilog in the browser</li>
+          <li>Click <strong>Submit</strong></li>
+          <li>Instant pass/fail with waveform comparison</li>
+          <li>No account needed (optional for progress tracking)</li>
+        </ul>
+        <p class="small" style="margin-top: 12px;">170+ exercises from wires to FSMs!</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- TINYTAPEOUT WEB DESIGN FLOW -->
+<!-- ============================================================ -->
+<section>
+  <h2>TinyTapeout: Web-Based Design Flow</h2>
+  <p class="small">TinyTapeout offers <strong>two ways</strong> to design your chip — both start in the browser:</p>
+  <div class="two-col">
+    <div>
+      <div class="box box-blue">
+        <h3>Option A: Wokwi (Visual)</h3>
+        <ul class="small">
+          <li>Drag-and-drop logic gates</li>
+          <li>No code — build circuits visually</li>
+          <li>Simulate in the browser</li>
+          <li>Auto-generates netlist for tapeout</li>
+          <li>Great for beginners!</li>
+        </ul>
+        <p class="tiny" style="margin-top:6px;"><a href="https://tinytapeout.com/digital_design/wokwi/">tinytapeout.com/digital_design/wokwi</a></p>
+      </div>
+    </div>
+    <div>
+      <div class="box box-green">
+        <h3>Option B: Verilog (Code)</h3>
+        <ul class="small">
+          <li>Fork the GitHub template</li>
+          <li>Write Verilog (even in GitHub's web editor!)</li>
+          <li>Push → GitHub Actions runs OpenLane</li>
+          <li>Automated synthesis, PnR, GDS</li>
+          <li>Full control, real HDL skills</li>
+        </ul>
+        <p class="tiny" style="margin-top:6px;"><a href="https://tinytapeout.com/digital_design/">tinytapeout.com/digital_design</a></p>
+      </div>
+    </div>
+  </div>
+  <div class="box small" style="margin-top: 8px;">
+    <p><strong>Our workshop uses Option B</strong> (Verilog). But if a participant has never written code before, start them on Option A with Wokwi — they can build a simple gate circuit and see it taped out!</p>
+  </div>
+</section>
+
+<section>
+  <h2>Wokwi: Build a Circuit Visually</h2>
+  <div class="two-col">
+    <div>
+      <pre><code class="language-plaintext" style="font-size: 0.7em;">  Wokwi Editor (in browser):
+  ┌────────────────────────────┐
+  │  [Gates] [Wires] [Sim]    │
+  │                            │
+  │   ┌───┐                   │
+  │ ──┤AND├──┐                │
+  │ ──┤   │  │  ┌───┐        │
+  │   └───┘  └──┤OR ├── OUT  │
+  │   ┌───┐  ┌──┤   │        │
+  │ ──┤AND├──┘  └───┘        │
+  │ ──┤   │                   │
+  │   └───┘                   │
+  │                            │
+  │  [▶ Simulate]  [Export]   │
+  └────────────────────────────┘</code></pre>
+    </div>
+    <div>
+      <div class="box">
+        <p class="small"><strong>Try it:</strong></p>
+        <ol class="small">
+          <li>Go to <a href="https://wokwi.com/">wokwi.com</a></li>
+          <li>Create a new project → "Logic Gates"</li>
+          <li>Drag AND, OR, NOT gates onto the canvas</li>
+          <li>Connect wires between them</li>
+          <li>Click <strong>Simulate</strong> to test</li>
+          <li>Toggle inputs, watch outputs change</li>
+        </ol>
+        <p class="small" style="margin-top: 12px;">For TinyTapeout, use their Wokwi template:<br>
+        <a href="https://tinytapeout.com/digital_design/wokwi/" class="tiny">tinytapeout.com/digital_design/wokwi</a></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
 <!-- TOOL INSTALLATION -->
 <!-- ============================================================ -->
 <section class="section-slide">
-  <h1>Tool Setup</h1>
-  <h2>Getting Your Environment Ready</h2>
+  <h1>Local Tool Setup</h1>
+  <h2>For Full Simulation &amp; Synthesis</h2>
 </section>
 
 <section>
@@ -966,23 +1205,70 @@ ls ~/IHP-Open-PDK/ihp-sg13g2/</code></pre>
 </section>
 
 <section>
+  <h2>Code Editor Setup</h2>
+  <div class="two-col">
+    <div>
+      <div class="box box-blue">
+        <h3>VS Code (Recommended)</h3>
+        <pre><code class="language-bash" style="font-size: 0.75em;"># Install VS Code:
+# https://code.visualstudio.com/
+
+# Install Verilog extension:
+code --install-extension mshr-h.VerilogHDL</code></pre>
+        <p class="small">Gives you:</p>
+        <ul class="tiny">
+          <li>Syntax highlighting for .v files</li>
+          <li>Auto-complete for Verilog keywords</li>
+          <li>Live linting (uses iverilog as backend)</li>
+          <li>Snippets for module, always, etc.</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="box box-green">
+        <h3>Configure Linting</h3>
+        <p class="small">In VS Code settings (Ctrl+,):</p>
+        <pre><code class="language-json" style="font-size: 0.75em;">{
+  "verilog.linting.linter": "iverilog",
+  "verilog.linting.iverilog.arguments":
+    "-g2012 -Wall"
+}</code></pre>
+        <p class="small">Now VS Code shows errors <strong>as you type</strong> — red squiggles on syntax errors, warnings on unused signals.</p>
+      </div>
+      <div class="box small" style="margin-top: 8px;">
+        <p><strong>Alternatives:</strong> Sublime Text, Vim/Neovim (with verilog plugin), or just use EDA Playground in the browser.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
   <h2>Verify Your Setup</h2>
-  <pre><code class="language-bash"># Clone the repo
+  <p class="small">Run these commands <strong>one by one</strong>. Each one tests a specific tool:</p>
+  <pre><code class="language-bash" style="font-size: 0.52em;"># ── Step 1: Check tools are installed ──
+iverilog -V 2>&1 | head -1       # expect: "Icarus Verilog version 1x.x"
+yosys --version                   # expect: "Yosys 0.xx"
+ls ~/IHP-Open-PDK/ihp-sg13g2/    # expect: libs.ref  libs.tech  ...
+
+# ── Step 2: Clone the project ──
 git clone https://github.com/fidel-makatia/Tinytapeout_4bitCPU.git
 cd Tinytapeout_4bitCPU
 
-# RTL simulation (works everywhere)
-make test
+# ── Step 3: RTL simulation (tests iverilog) ──
+make test                         # expect: "51 / 51 passed — ALL TESTS PASSED"
 
-# Synthesis to IHP cells
-IHP_PDK=~/IHP-Open-PDK make synth
+# ── Step 4: Synthesis (tests yosys + IHP PDK) ──
+IHP_PDK=~/IHP-Open-PDK make synth  # expect: "Number of cells: 194"
 
-# Gate-level simulation
-IHP_PDK=~/IHP-Open-PDK make test_gl</code></pre>
-  <div class="box box-green">
-    <p>Expected output:</p>
-    <pre><code>  RESULTS: 51 / 51 passed
-  ✓ ALL TESTS PASSED</code></pre>
+# ── Step 5: Gate-level simulation (tests everything together) ──
+IHP_PDK=~/IHP-Open-PDK make test_gl  # expect: "51 / 51 passed — ALL TESTS PASSED"
+
+# ── Step 6: Waveform viewer (tests GTKWave) ──
+make test                         # generates tb.vcd
+make wave                         # should open GTKWave window</code></pre>
+  <div class="box box-green small">
+    <p><strong>All 6 steps pass?</strong> You're ready for the workshop!</p>
+    <p><strong>Step 3 fails?</strong> iverilog not installed. &nbsp; <strong>Step 4 fails?</strong> yosys or IHP PDK path wrong. &nbsp; <strong>Step 5 fails?</strong> Check IHP_PDK path.</p>
   </div>
 </section>
 

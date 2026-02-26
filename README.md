@@ -15,12 +15,16 @@ A minimal 4-bit accumulator CPU designed for fabrication on IHP SG13G2 130nm thr
 - [Instruction Set](#instruction-set)
 - [TinyTapeout Pin Mapping](#tinytapeout-pin-mapping)
 - [Example Programs](#example-programs)
+- [Verilog Playground (Zero Install)](#verilog-playground-zero-install)
+- [TinyTapeout Web Design Flow](#tinytapeout-web-design-flow)
 - [Tool Installation](#tool-installation)
   - [macOS](#macos)
   - [Windows](#windows-wsl2)
   - [Linux (Ubuntu/Debian)](#linux-ubuntudebian)
+  - [Code Editor (VS Code)](#code-editor-vs-code)
   - [Docker (All Platforms)](#docker-all-platforms)
   - [Which Setup Do I Need?](#which-setup-do-i-need)
+  - [Post-Install Verification](#post-install-verification)
 - [Quick Start](#quick-start)
 - [Workshop Guide](#workshop-guide)
 - [Synthesis Results](#synthesis-results)
@@ -471,6 +475,104 @@ Addr  Hex   Assembly    Description
 
 ---
 
+## Verilog Playground (Zero Install)
+
+Before installing anything locally, you can write and simulate Verilog **right in your browser**. These tools are perfect for warming up or if you're on a locked-down machine:
+
+| Tool | URL | What it does | Best for |
+|------|-----|-------------|----------|
+| **EDA Playground** | [edaplayground.com](https://www.edaplayground.com/) | Write Verilog + testbench, simulate with Icarus Verilog, view waveforms | General simulation — our primary zero-install tool |
+| **HDLBits** | [hdlbits.01xz.net](https://hdlbits.01xz.net/) | 170+ interactive Verilog exercises with auto-grading | Learning Verilog step-by-step |
+| **DigitalJS Online** | [digitaljs.tilk.eu](https://digitaljs.tilk.eu/) | Paste Verilog, see synthesized gate-level schematic, simulate interactively | Visualizing how code becomes gates |
+| **Wokwi** | [wokwi.com](https://wokwi.com/) | Drag-and-drop logic gate editor, simulate in browser | Absolute beginners (no code needed) |
+
+### Quick Start: EDA Playground
+
+1. Go to [edaplayground.com](https://www.edaplayground.com/) and sign up (free, 30 seconds)
+2. Set language to **Verilog** and simulator to **Icarus Verilog 12.0**
+3. Check **"Open EPWave after run"** for waveform viewing
+4. Paste this in the **Design** tab (left panel):
+
+```verilog
+module counter (
+    input  wire       clk,
+    input  wire       rst_n,
+    output reg  [3:0] count
+);
+    always @(posedge clk or negedge rst_n)
+        if (!rst_n)
+            count <= 4'b0000;
+        else
+            count <= count + 1;
+endmodule
+```
+
+5. Paste this in the **Testbench** tab (right panel):
+
+```verilog
+module tb;
+    reg clk = 0, rst_n = 0;
+    wire [3:0] count;
+    counter uut (.clk(clk), .rst_n(rst_n), .count(count));
+
+    always #5 clk = ~clk;
+
+    initial begin
+        $dumpfile("dump.vcd");
+        $dumpvars(0, tb);
+        #12 rst_n = 1;
+        #200 $finish;
+    end
+endmodule
+```
+
+6. Click **Run** — you'll see `count` going 0, 1, 2, 3... in the waveform viewer!
+
+### Quick Start: DigitalJS (See Your Code as Gates)
+
+1. Go to [digitaljs.tilk.eu](https://digitaljs.tilk.eu/)
+2. Paste any Verilog (try a small ALU or adder)
+3. Click **Synthesize** — see the actual gate-level schematic
+4. Uses **Yosys compiled to WebAssembly** — real synthesis running in your browser!
+
+### Recommended HDLBits Warm-Up Path
+
+These 8 exercises cover every building block in our CPU:
+
+1. [Wire](https://hdlbits.01xz.net/wiki/Wire) — the simplest module
+2. [NOT gate](https://hdlbits.01xz.net/wiki/Notgate)
+3. [AND gate](https://hdlbits.01xz.net/wiki/Andgate)
+4. [4-bit MUX](https://hdlbits.01xz.net/wiki/Mux2to1v)
+5. [Half adder](https://hdlbits.01xz.net/wiki/Hadd)
+6. [Full adder](https://hdlbits.01xz.net/wiki/Fadd)
+7. [D flip-flop](https://hdlbits.01xz.net/wiki/Dff)
+8. [4-bit counter](https://hdlbits.01xz.net/wiki/Count15)
+
+---
+
+## TinyTapeout Web Design Flow
+
+TinyTapeout offers **two ways** to design your chip — both start in the browser:
+
+### Option A: Wokwi (Visual, No Code)
+
+- Drag-and-drop logic gates in the browser
+- Simulate your circuit visually
+- Auto-generates netlist for tapeout
+- Great for absolute beginners!
+- Guide: [tinytapeout.com/digital_design/wokwi](https://tinytapeout.com/digital_design/wokwi/)
+
+### Option B: Verilog (Code, Full Control)
+
+- Fork the [TinyTapeout IHP template](https://github.com/TinyTapeout/ttihp-verilog-template) on GitHub
+- Write Verilog — even using GitHub's built-in web editor (no local tools needed!)
+- Push to GitHub → GitHub Actions automatically runs OpenLane (synthesis → place & route → GDS)
+- Guide: [tinytapeout.com/digital_design](https://tinytapeout.com/digital_design/)
+
+> **Our workshop uses Option B** (Verilog). But if a participant has never written code before, start them on Option A with Wokwi — they can build a simple gate circuit and see it taped out!
+
+---
+
 ## Tool Installation
 
 ### macOS
@@ -559,29 +661,34 @@ sudo usermod -aG docker $USER
 # Log out and back in for group change to take effect
 ```
 
-### Verify Your Setup
+### Code Editor (VS Code)
 
-After installation on any OS, clone this repo and run:
+A good editor makes writing Verilog much easier. VS Code with the Verilog extension gives you syntax highlighting, auto-complete, and live error checking.
+
+**Install VS Code:**
+
+Download from [code.visualstudio.com](https://code.visualstudio.com/) (macOS, Windows, Linux).
+
+**Install the Verilog extension:**
 
 ```bash
-git clone https://github.com/fidel-makatia/Tinytapeout_4bitCPU.git
-cd Tinytapeout_4bitCPU
-
-# RTL simulation (works everywhere)
-make test
-
-# Synthesis to IHP cells (requires yosys + IHP PDK)
-IHP_PDK=~/IHP-Open-PDK make synth
-
-# Gate-level simulation (requires iverilog + IHP PDK)
-IHP_PDK=~/IHP-Open-PDK make test_gl
+code --install-extension mshr-h.VerilogHDL
 ```
 
-Expected output:
+**Configure linting** (uses iverilog as backend — must be installed first):
+
+Open VS Code Settings (Ctrl+, or Cmd+,) and add:
+
+```json
+{
+    "verilog.linting.linter": "iverilog",
+    "verilog.linting.iverilog.arguments": "-g2012 -Wall"
+}
 ```
-  RESULTS: 51 / 51 passed
-  ALL TESTS PASSED
-```
+
+Now VS Code shows errors **as you type** — red squiggles on syntax errors, warnings on unused signals. This catches bugs before you even run the simulator.
+
+**Alternatives:** Sublime Text, Vim/Neovim (with verilog plugin), or just use [EDA Playground](https://www.edaplayground.com/) in the browser.
 
 ### Docker (All Platforms)
 
@@ -636,6 +743,49 @@ The output GDS file (your physical layout ready for fabrication) will be in `run
 | **Just submit to TinyTapeout** (let CI do the work) | Just git + GitHub account! | Any |
 
 > **Recommended for workshop:** Install iverilog + yosys + IHP PDK natively for fast iteration. Use Docker or GitHub CI for the final PnR/GDS step.
+
+### Post-Install Verification
+
+Run these steps **one by one** after installation. Each step tests a specific tool — if one fails, you know exactly what's broken:
+
+```bash
+# ── Step 1: Check tools are installed ──
+iverilog -V 2>&1 | head -1       # expect: "Icarus Verilog version 1x.x"
+yosys --version                   # expect: "Yosys 0.xx"
+ls ~/IHP-Open-PDK/ihp-sg13g2/    # expect: libs.ref  libs.tech  ...
+
+# ── Step 2: Clone the project ──
+git clone https://github.com/fidel-makatia/Tinytapeout_4bitCPU.git
+cd Tinytapeout_4bitCPU
+
+# ── Step 3: RTL simulation (tests iverilog) ──
+make test
+# ✅ expect: "RESULTS: 51 / 51 passed — ALL TESTS PASSED"
+
+# ── Step 4: Synthesis (tests yosys + IHP PDK) ──
+IHP_PDK=~/IHP-Open-PDK make synth
+# ✅ expect: "Number of cells: 194"
+
+# ── Step 5: Gate-level simulation (tests everything together) ──
+IHP_PDK=~/IHP-Open-PDK make test_gl
+# ✅ expect: "RESULTS: 51 / 51 passed — ALL TESTS PASSED"
+
+# ── Step 6: Waveform viewer (tests GTKWave) ──
+make wave
+# ✅ expect: GTKWave window opens showing waveform signals
+```
+
+**Troubleshooting:**
+
+| Step that fails | Problem | Fix |
+|-----------------|---------|-----|
+| Step 1: `iverilog: command not found` | iverilog not installed | macOS: `brew install icarus-verilog` / Linux: `sudo apt install iverilog` |
+| Step 1: `yosys: command not found` | yosys not installed | macOS: `brew install yosys` / Linux: `sudo apt install yosys` |
+| Step 1: `ls: No such file or directory` | IHP PDK not cloned | `cd ~ && git clone --depth 1 https://github.com/IHP-GmbH/IHP-Open-PDK.git` |
+| Step 3: compile errors | Wrong iverilog version | Need iverilog with `-g2012` support (version 11+) |
+| Step 4: `Can't open liberty file` | IHP_PDK path wrong | Check path: `ls $IHP_PDK/ihp-sg13g2/libs.ref/sg13g2_stdcell/lib/` |
+| Step 5: `Unknown module type` | Missing cell models | Make sure `test/sg13g2_functional.v` exists in the repo |
+| Step 6: GTKWave doesn't open | GTKWave not installed | macOS: `brew install --cask gtkwave` / Linux: `sudo apt install gtkwave` |
 
 ---
 
