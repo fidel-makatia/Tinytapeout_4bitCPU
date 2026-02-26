@@ -1,0 +1,22 @@
+# Yosys Synthesis Script — Nibble 4-bit CPU targeting IHP SG13G2
+
+# Read RTL
+read_verilog src/cpu_core.v
+read_verilog src/project.v
+
+# Synthesize
+synth -top tt_um_fidel_makatia_4bit_cpu -flatten
+
+# Map to IHP SG13G2 standard cells
+dfflibmap -liberty IHP_LIB_PLACEHOLDER
+abc -liberty IHP_LIB_PLACEHOLDER
+
+# Clean up
+opt_clean -purge
+
+# Reports
+tee -o outputs/synth_stats.txt stat -liberty IHP_LIB_PLACEHOLDER
+tee -o outputs/synth_check.txt check
+
+# Write gate-level netlist
+write_verilog -noattr outputs/synth_netlist.v
