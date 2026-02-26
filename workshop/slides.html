@@ -986,6 +986,95 @@ IHP_PDK=~/IHP-Open-PDK make test_gl</code></pre>
   </div>
 </section>
 
+<section>
+  <h2>Docker Setup (All Platforms)</h2>
+  <p class="small">Docker gives you a <strong>complete, pre-configured environment</strong> — no manual installs needed. This is the recommended option if you want to run the full OpenLane Place &amp; Route flow.</p>
+  <div class="two-col">
+    <div>
+      <div class="box box-blue">
+        <h3>1. Install Docker</h3>
+        <pre><code class="language-bash"># macOS / Windows:
+# Download Docker Desktop from:
+# https://www.docker.com/products/docker-desktop/
+# Install and start it.
+
+# Linux (Ubuntu/Debian):
+sudo apt update
+sudo apt install -y docker.io
+sudo usermod -aG docker $USER
+# Log out and log back in</code></pre>
+      </div>
+    </div>
+    <div>
+      <div class="box box-green">
+        <h3>2. Verify Docker</h3>
+        <pre><code class="language-bash"># Check Docker is running:
+docker --version
+docker run hello-world
+
+# Should print:
+# "Hello from Docker!"</code></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Docker: Run OpenLane PnR</h2>
+  <p class="small">The full Place &amp; Route flow runs inside a Docker container. This is what TinyTapeout's GitHub CI does — you can also run it locally.</p>
+  <pre><code class="language-bash"># Pull the TinyTapeout IHP OpenLane image
+docker pull ghcr.io/tinytapeout/openlane2:latest
+
+# Clone the TinyTapeout IHP template
+git clone https://github.com/TinyTapeout/ttihp-verilog-template.git
+cd ttihp-verilog-template
+
+# Copy your design files into the template
+cp /path/to/Tinytapeout_4bitCPU/src/project.v src/
+cp /path/to/Tinytapeout_4bitCPU/src/cpu_core.v src/
+cp /path/to/Tinytapeout_4bitCPU/src/config.json src/
+cp /path/to/Tinytapeout_4bitCPU/info.yaml .
+
+# Run the full hardening flow (synthesis → PnR → GDS)
+docker run --rm -v $(pwd):/work -w /work \
+  ghcr.io/tinytapeout/openlane2:latest \
+  python -m openlane --run-tag run1 src/config.json</code></pre>
+  <div class="box small">
+    <p><strong>Output:</strong> <code>runs/run1/final/gds/</code> — your physical layout file ready for fabrication!</p>
+    <p>Docker works identically on <span class="highlight-blue">macOS</span>, <span class="highlight-green">Linux</span>, and <span class="highlight-yellow">Windows</span>.</p>
+  </div>
+</section>
+
+<section>
+  <h2>Which Setup Should I Use?</h2>
+  <table>
+    <tr><th>Goal</th><th>What to install</th><th>Platform</th></tr>
+    <tr>
+      <td><strong>Just simulate</strong><br><span class="tiny">(RTL testbench only)</span></td>
+      <td>Icarus Verilog + GTKWave</td>
+      <td>macOS, Linux, Windows</td>
+    </tr>
+    <tr>
+      <td><strong>Simulate + Synthesize</strong><br><span class="tiny">(see gate-level results)</span></td>
+      <td>+ Yosys + IHP PDK</td>
+      <td>macOS, Linux, WSL2</td>
+    </tr>
+    <tr>
+      <td><strong>Full PnR flow locally</strong><br><span class="tiny">(generate GDS layout)</span></td>
+      <td>+ Docker + OpenLane</td>
+      <td>macOS, Linux, Windows</td>
+    </tr>
+    <tr>
+      <td><strong>Just submit to TinyTapeout</strong><br><span class="tiny">(let CI do the work)</span></td>
+      <td>Just git + GitHub account!</td>
+      <td>Any</td>
+    </tr>
+  </table>
+  <div class="box small" style="margin-top: 12px;">
+    <p><strong>Recommended for workshop:</strong> Install iverilog + yosys + IHP PDK natively for fast iteration. Use Docker or GitHub CI for the final PnR/GDS step.</p>
+  </div>
+</section>
+
 <!-- ============================================================ -->
 <!-- HANDS-ON CHALLENGES -->
 <!-- ============================================================ -->
@@ -1083,6 +1172,378 @@ rom[3] = 8'hF0;   // HLT
       <li>Run <code>make synth</code> — check the cell count changed</li>
       <li>Run <code>make test_gl</code> — verify gate-level too!</li>
     </ol>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- TESTING ON THE PCB -->
+<!-- ============================================================ -->
+<section class="section-slide">
+  <h1>Part 5</h1>
+  <h2>Testing on the Real Chip</h2>
+</section>
+
+<section>
+  <h2>The TinyTapeout Demo Board</h2>
+  <p class="small">When your chip comes back from fabrication, it arrives mounted on a <strong>TinyTapeout demo PCB</strong>.</p>
+  <pre><code class="language-plaintext" style="font-size: 0.7em;">  ┌─────────────────────────────────────────────────────────┐
+  │              TinyTapeout Demo Board                     │
+  │                                                         │
+  │   ┌───────────┐         ┌──────────────┐               │
+  │   │           │  SPI    │              │               │
+  │   │  RP2040   │────────►│  YOUR CHIP   │               │
+  │   │  (MCU)    │         │  (ASIC)      │               │
+  │   │           │◄────────│              │               │
+  │   └─────┬─────┘         └──────┬───────┘               │
+  │         │                       │                       │
+  │   ┌─────▼─────┐         ┌──────▼───────┐               │
+  │   │  USB-C    │         │   PMODs      │               │
+  │   │ (power +  │         │  (I/O pins)  │               │
+  │   │  program) │         │              │               │
+  │   └───────────┘         └──────────────┘               │
+  │                                                         │
+  │   [DIP switches]    [7-seg display]    [LED bar]       │
+  └─────────────────────────────────────────────────────────┘</code></pre>
+</section>
+
+<section>
+  <h2>How the Board Connects to Our CPU</h2>
+  <pre><code class="language-plaintext" style="font-size: 0.65em;">                  TinyTapeout Demo Board
+  ┌──────────────────────────────────────────────────────────────┐
+  │                                                              │
+  │  RP2040                          ASIC (your chip)            │
+  │  ┌──────────┐                    ┌─────────────────┐         │
+  │  │          │ ── ui_in[7:0] ───►│ INSTRUCTION     │         │
+  │  │  Drives  │    (8 pins)       │ INPUT           │         │
+  │  │  inputs  │                    │                 │         │
+  │  │  based   │ ◄─ uio[3:0] ─────│ PROGRAM COUNTER │         │
+  │  │  on PC   │    (4 pins)       │ OUTPUT          │         │
+  │  │          │                    │                 │         │
+  │  │  Reads   │ ── uio[7:4] ────►│ INPUT PORT      │         │
+  │  │  outputs │    (4 pins)       │                 │         │
+  │  └──────────┘                    │                 │         │
+  │                                  │                 │         │
+  │  LEDs / 7-seg ◄── uo_out[3:0] ──│ ACCUMULATOR     │         │
+  │  Status LEDs  ◄── uo_out[7:4] ──│ FLAGS           │         │
+  │                                  └─────────────────┘         │
+  │                                                              │
+  │  Clock ─────────────────────────► clk                        │
+  │  Reset button ──────────────────► rst_n                      │
+  └──────────────────────────────────────────────────────────────┘</code></pre>
+</section>
+
+<section>
+  <h2>The Key Idea: RP2040 = Program Memory</h2>
+  <div class="box box-blue">
+    <p>Our CPU has <strong>no internal ROM</strong>. It reads instructions from its input pins.<br>
+    The <strong>RP2040 microcontroller</strong> on the demo board acts as external program memory.</p>
+  </div>
+  <pre><code class="language-plaintext" style="font-size: 0.8em;">  The loop (runs every clock cycle):
+
+  ┌─────────┐    PC (4-bit)     ┌──────────┐
+  │  ASIC   │ ─────────────────►│  RP2040  │
+  │  (CPU)  │                    │          │
+  │         │◄──────────────────│ program  │
+  │         │   instruction      │ ROM[]    │
+  └─────────┘    (8-bit)         └──────────┘
+
+  1. CPU outputs PC on uio[3:0]         → "I need instruction at address 5"
+  2. RP2040 reads PC                     → "Address 5, let me look that up"
+  3. RP2040 writes program[5] to ui_in   → "Here's instruction 0x21 (ADD 1)"
+  4. CPU latches instruction on next clk → executes ADD 1
+  5. Repeat!</code></pre>
+</section>
+
+<section>
+  <h2>RP2040 Firmware (MicroPython)</h2>
+  <p class="small">Flash this to the RP2040 on the TinyTapeout board:</p>
+  <pre><code class="language-python" style="font-size: 0.52em;">import machine
+import time
+
+# Your program! Change this to run different programs.
+# Counter: counts 0→1→2→...→15→0 then halts
+program = [
+    0x10,  # LDI 0    — load 0 into accumulator
+    0x21,  # ADD 1    — add 1
+    0xD1,  # JNZ 1    — jump to addr 1 if not zero
+    0xF0,  # HLT      — halt
+    0x00, 0x00, 0x00, 0x00,  # unused addresses (NOP)
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+]
+
+# Pin setup (adjust pin numbers for your TT board revision)
+ui_pins  = [machine.Pin(i, machine.Pin.OUT) for i in range(0, 8)]   # ui_in[7:0]
+pc_pins  = [machine.Pin(i, machine.Pin.IN)  for i in range(16, 20)] # uio[3:0]
+
+def read_pc():
+    """Read 4-bit program counter from the chip"""
+    val = 0
+    for i in range(4):
+        val |= (pc_pins[i].value() << i)
+    return val
+
+def write_instruction(instr):
+    """Write 8-bit instruction to the chip's input pins"""
+    for i in range(8):
+        ui_pins[i].value((instr >> i) & 1)
+
+# Main loop — act as program memory
+while True:
+    pc = read_pc()
+    instr = program[pc & 0x0F]   # mask to 4 bits (16 addresses)
+    write_instruction(instr)
+</code></pre>
+</section>
+
+<section>
+  <h2>RP2040 Firmware (C / Arduino)</h2>
+  <p class="small">Alternative: C firmware for lower latency:</p>
+  <pre><code class="language-c" style="font-size: 0.52em;">// Flash via Arduino IDE with "Raspberry Pi Pico" board selected
+#include &lt;Arduino.h&gt;
+
+// Your program — Counter (0 → 15 → halt)
+uint8_t program[16] = {
+    0x10,  // LDI 0
+    0x21,  // ADD 1
+    0xD1,  // JNZ 1
+    0xF0,  // HLT
+    0x00, 0x00, 0x00, 0x00,  // unused
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+};
+
+// Pin assignments (adjust for your TT board revision)
+const int UI_PINS[8]  = {0, 1, 2, 3, 4, 5, 6, 7};    // ui_in[7:0]
+const int PC_PINS[4]  = {16, 17, 18, 19};              // uio[3:0]
+const int ACC_PINS[4] = {8, 9, 10, 11};                // uo_out[3:0] (read)
+
+void setup() {
+    Serial.begin(115200);
+    for (int i = 0; i < 8; i++) pinMode(UI_PINS[i], OUTPUT);
+    for (int i = 0; i < 4; i++) pinMode(PC_PINS[i], INPUT);
+    for (int i = 0; i < 4; i++) pinMode(ACC_PINS[i], INPUT);
+}
+
+void loop() {
+    // 1. Read PC from chip
+    uint8_t pc = 0;
+    for (int i = 0; i < 4; i++)
+        pc |= (digitalRead(PC_PINS[i]) << i);
+
+    // 2. Look up instruction
+    uint8_t instr = program[pc & 0x0F];
+
+    // 3. Drive instruction to chip
+    for (int i = 0; i < 8; i++)
+        digitalWrite(UI_PINS[i], (instr >> i) & 1);
+
+    // 4. (Optional) Print accumulator to serial monitor
+    uint8_t acc = 0;
+    for (int i = 0; i < 4; i++)
+        acc |= (digitalRead(ACC_PINS[i]) << i);
+    Serial.printf("PC=%d  INSTR=0x%02X  ACC=%d\n", pc, instr, acc);
+}</code></pre>
+</section>
+
+<section>
+  <h2>Step-by-Step: Testing on the PCB</h2>
+  <ol>
+    <li class="fragment">
+      <strong>Connect the board</strong> via USB-C to your computer
+      <p class="tiny">Powers the board + gives you serial/programming access</p>
+    </li>
+    <li class="fragment">
+      <strong>Select your design</strong> on the TinyTapeout board
+      <p class="tiny">Use the TT Commander app or DIP switches to select your project's index</p>
+    </li>
+    <li class="fragment">
+      <strong>Flash the RP2040</strong> with your program ROM firmware
+      <p class="tiny">MicroPython: copy .py file &nbsp;|&nbsp; C: flash via Arduino IDE</p>
+    </li>
+    <li class="fragment">
+      <strong>Press reset</strong> — CPU starts executing!
+      <p class="tiny">The reset button pulls rst_n LOW then releases HIGH</p>
+    </li>
+    <li class="fragment">
+      <strong>Watch the LEDs</strong> — accumulator value on uo_out[3:0]
+      <p class="tiny">Counter program: LEDs count 0000 → 0001 → 0010 → ... → 1111 → stop</p>
+    </li>
+    <li class="fragment">
+      <strong>Debug with serial monitor</strong> — see PC, instruction, ACC in real-time
+      <p class="tiny">Open Arduino Serial Monitor or <code>screen /dev/ttyACM0 115200</code></p>
+    </li>
+  </ol>
+</section>
+
+<section>
+  <h2>What You'll See: Counter Program</h2>
+  <pre><code class="language-plaintext" style="font-size: 0.7em;">  Serial Monitor Output:
+  ─────────────────────────────
+  PC=0  INSTR=0x10  ACC=0       ← LDI 0
+  PC=1  INSTR=0x21  ACC=0       ← fetching ADD 1
+  PC=1  INSTR=0x21  ACC=1       ← executed: A = 0 + 1 = 1
+  PC=2  INSTR=0xD1  ACC=1       ← JNZ 1 (A≠0, branching!)
+  PC=1  INSTR=0x21  ACC=1       ← back at ADD 1
+  PC=1  INSTR=0x21  ACC=2       ← A = 1 + 1 = 2
+  ...
+  PC=1  INSTR=0x21  ACC=15      ← A = 14 + 1 = 15
+  PC=1  INSTR=0x21  ACC=0       ← A = 15 + 1 = 0 (overflow!)
+  PC=2  INSTR=0xD1  ACC=0       ← JNZ 1 (A=0, NOT branching)
+  PC=3  INSTR=0xF0  ACC=0       ← HLT — CPU stopped!
+  ─────────────────────────────</code></pre>
+  <div class="two-col" style="margin-top: 12px;">
+    <div class="box">
+      <p class="small"><strong>LEDs (uo_out):</strong></p>
+      <pre><code class="language-plaintext" style="font-size: 0.75em;">[3][2][1][0] [C][Z][H][P]
+ 0  0  0  0   0  1  0  ·  ← start
+ 0  0  0  1   0  0  0  ·
+ 0  0  1  0   0  0  0  ·
+ ...counting up...
+ 1  1  1  1   0  0  0  ·  ← A=15
+ 0  0  0  0   1  1  1  ·  ← halted!</code></pre>
+    </div>
+    <div class="box box-green">
+      <p class="small"><strong>What the flags mean:</strong></p>
+      <ul class="tiny">
+        <li><strong>C (Carry):</strong> Lit when ADD overflows past 15</li>
+        <li><strong>Z (Zero):</strong> Lit when ACC = 0</li>
+        <li><strong>H (Halted):</strong> Lit when CPU hit HLT</li>
+        <li><strong>P (Phase):</strong> Blinks 0/1 — fetch/execute</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Try Different Programs!</h2>
+  <div class="two-col">
+    <div>
+      <div class="box box-blue">
+        <h3>Fibonacci on LEDs</h3>
+        <pre><code class="language-python" style="font-size: 0.7em;">program = [
+    0x10,  # LDI 0   → 0
+    0x21,  # ADD 1   → 1
+    0x20,  # ADD 0   → 1
+    0x21,  # ADD 1   → 2
+    0x21,  # ADD 1   → 3
+    0x22,  # ADD 2   → 5
+    0x23,  # ADD 3   → 8
+    0x25,  # ADD 5   → 13
+    0xF0,  # HLT
+]</code></pre>
+        <p class="tiny">Watch LEDs show: 0→1→1→2→3→5→8→13</p>
+      </div>
+    </div>
+    <div>
+      <div class="box box-green">
+        <h3>Knight Rider (shift LED)</h3>
+        <pre><code class="language-python" style="font-size: 0.7em;">program = [
+    0x11,  # LDI 1   → 0001
+    0x80,  # SHL     → 0010
+    0x80,  # SHL     → 0100
+    0x80,  # SHL     → 1000
+    0x90,  # SHR     → 0100
+    0x90,  # SHR     → 0010
+    0xA0,  # JMP 0   → loop!
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00,
+]</code></pre>
+        <p class="tiny">LED bounces left and right forever!</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Using DIP Switches as Input</h2>
+  <div class="box" style="border-color: #d29922;">
+    <p>The <strong>IN</strong> instruction reads <code>uio[7:4]</code> — connect DIP switches to these pins!</p>
+  </div>
+  <pre><code class="language-plaintext" style="font-size: 0.75em;">  DIP Switches                         LEDs
+  ┌───┬───┬───┬───┐                    ┌───┬───┬───┬───┐
+  │ 3 │ 2 │ 1 │ 0 │ ← set a number    │ 3 │ 2 │ 1 │ 0 │ ← see result
+  └─┬─┴─┬─┴─┬─┴─┬─┘                    └─▲─┴─▲─┴─▲─┴─▲─┘
+    │   │   │   │                          │   │   │   │
+  uio[7] [6] [5] [4]                  uo_out[3] [2] [1] [0]
+    │   │   │   │                          │   │   │   │
+    └───┴───┴───┴──────► ASIC ────────────┴───┴───┴───┘
+
+  Example program — "Double the input":
+  0x0: 0xE0   IN       ← read DIP switches into A
+  0x1: 0x80   SHL      ← shift left = multiply by 2
+  0x2: 0xF0   HLT      ← show result on LEDs
+
+  Set DIP = 0101 (5) → LEDs show 1010 (10)!
+  Set DIP = 0011 (3) → LEDs show 0110 (6)!</code></pre>
+</section>
+
+<section>
+  <h2>Troubleshooting on the PCB</h2>
+  <table>
+    <tr><th>Symptom</th><th>Likely Cause</th><th>Fix</th></tr>
+    <tr>
+      <td>All LEDs off</td>
+      <td>Wrong project selected</td>
+      <td>Check project index on DIP switches / TT Commander</td>
+    </tr>
+    <tr>
+      <td>LEDs stuck at 0000</td>
+      <td>CPU in reset or halted</td>
+      <td>Press reset button; check RP2040 firmware is running</td>
+    </tr>
+    <tr>
+      <td>Random LED pattern</td>
+      <td>RP2040 not driving instructions</td>
+      <td>Reflash firmware; check pin assignments match your board rev</td>
+    </tr>
+    <tr>
+      <td>Phase LED not blinking</td>
+      <td>Clock not running</td>
+      <td>Check clock source setting; try slower clock for debugging</td>
+    </tr>
+    <tr>
+      <td>Halted LED on immediately</td>
+      <td>First instruction is HLT or NOP-filled memory</td>
+      <td>Check program array starts with valid instructions</td>
+    </tr>
+    <tr>
+      <td>Accumulator wrong values</td>
+      <td>Clock too fast for RP2040 loop</td>
+      <td>Slow clock to 1 kHz or add delay in RP2040 firmware</td>
+    </tr>
+  </table>
+</section>
+
+<section>
+  <h2>Clock Speed Tips</h2>
+  <div class="two-col">
+    <div>
+      <div class="box box-blue">
+        <h3>For Debugging</h3>
+        <ul class="small">
+          <li>Set clock to <strong>1 Hz - 10 Hz</strong></li>
+          <li>Watch each instruction execute in real-time</li>
+          <li>Count LED changes by eye</li>
+          <li>Use serial monitor to log every cycle</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="box box-green">
+        <h3>For Demo</h3>
+        <ul class="small">
+          <li>Counter at <strong>~2 Hz</strong> — visible counting</li>
+          <li>Knight Rider at <strong>~4 Hz</strong> — nice LED sweep</li>
+          <li>Full speed (<strong>1 MHz</strong>) — instant result</li>
+          <li>RP2040 must keep up with clock!</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="box small" style="margin-top: 12px;">
+    <p><strong>How to set clock speed:</strong> The TT board generates the clock from the RP2040. Configure it in the TinyTapeout SDK or set it manually via the RP2040 firmware. Default is typically 10 MHz — slow it down for visual demos!</p>
   </div>
 </section>
 
