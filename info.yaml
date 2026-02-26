@@ -1,0 +1,44 @@
+project:
+  title: "Nibble — 4-bit CPU"
+  author: "Fidel Makatia"
+  discord: ""
+  description: "A minimal 4-bit accumulator CPU with 16 instructions, 2-cycle fetch-execute pipeline, and external program memory"
+  language: "Verilog"
+  clock_hz: 1000000
+
+  tiles: "1x1"
+  top_module: "tt_um_fidel_makatia_4bit_cpu"
+
+  inputs:
+    - instruction bit 0
+    - instruction bit 1
+    - instruction bit 2
+    - instruction bit 3
+    - instruction bit 4 (opcode LSB)
+    - instruction bit 5
+    - instruction bit 6
+    - instruction bit 7 (opcode MSB)
+
+  outputs:
+    - accumulator bit 0
+    - accumulator bit 1
+    - accumulator bit 2
+    - accumulator bit 3
+    - carry flag
+    - zero flag
+    - halted
+    - phase (0=fetch, 1=execute)
+
+  bidirectional:
+    - program counter bit 0 (output)
+    - program counter bit 1 (output)
+    - program counter bit 2 (output)
+    - program counter bit 3 (output)
+    - input port bit 0 (input)
+    - input port bit 1 (input)
+    - input port bit 2 (input)
+    - input port bit 3 (input)
+
+  source_files:
+    - project.v
+    - cpu_core.v
