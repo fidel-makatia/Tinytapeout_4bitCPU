@@ -19,10 +19,22 @@ A minimal 4-bit accumulator CPU designed for fabrication on IHP SG13G2 130nm thr
   - [macOS](#macos)
   - [Windows](#windows-wsl2)
   - [Linux (Ubuntu/Debian)](#linux-ubuntudebian)
+  - [Docker (All Platforms)](#docker-all-platforms)
+  - [Which Setup Do I Need?](#which-setup-do-i-need)
 - [Quick Start](#quick-start)
 - [Workshop Guide](#workshop-guide)
 - [Synthesis Results](#synthesis-results)
-- [Testing with TinyTapeout Board](#testing-with-tinytapeout-board)
+- [Testing on the TinyTapeout PCB](#testing-on-the-tinytapeout-pcb)
+  - [Board Overview](#board-overview)
+  - [How It Works: RP2040 = Program Memory](#how-it-works-rp2040--program-memory)
+  - [RP2040 Firmware (MicroPython)](#rp2040-firmware-micropython)
+  - [RP2040 Firmware (C / Arduino)](#rp2040-firmware-c--arduino)
+  - [Step-by-Step Testing](#step-by-step-testing)
+  - [What You'll See](#what-youll-see)
+  - [Demo Programs for the PCB](#demo-programs-for-the-pcb)
+  - [Using DIP Switches as Input](#using-dip-switches-as-input)
+  - [Clock Speed Tips](#clock-speed-tips)
+  - [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -571,6 +583,60 @@ Expected output:
   ALL TESTS PASSED
 ```
 
+### Docker (All Platforms)
+
+Docker gives you a **complete, pre-configured environment** for running the full OpenLane Place & Route flow. No manual tool installation needed — everything runs inside a container.
+
+**Step 1: Install Docker**
+
+| Platform | How to install |
+|----------|---------------|
+| **macOS** | Download [Docker Desktop](https://www.docker.com/products/docker-desktop/), install, and start it |
+| **Windows** | Download [Docker Desktop](https://www.docker.com/products/docker-desktop/), install (enable WSL2 backend), and start it |
+| **Linux** | `sudo apt install -y docker.io && sudo usermod -aG docker $USER` then log out and back in |
+
+**Step 2: Verify Docker is running**
+
+```bash
+docker --version
+docker run hello-world    # should print "Hello from Docker!"
+```
+
+**Step 3: Run the full OpenLane PnR flow**
+
+```bash
+# Pull the TinyTapeout IHP OpenLane image
+docker pull ghcr.io/tinytapeout/openlane2:latest
+
+# Clone the TinyTapeout IHP template
+git clone https://github.com/TinyTapeout/ttihp-verilog-template.git
+cd ttihp-verilog-template
+
+# Copy your design files into the template
+cp /path/to/Tinytapeout_4bitCPU/src/project.v src/
+cp /path/to/Tinytapeout_4bitCPU/src/cpu_core.v src/
+cp /path/to/Tinytapeout_4bitCPU/src/config.json src/
+cp /path/to/Tinytapeout_4bitCPU/info.yaml .
+
+# Run the full hardening flow (synthesis → place & route → GDS)
+docker run --rm -v $(pwd):/work -w /work \
+  ghcr.io/tinytapeout/openlane2:latest \
+  python -m openlane --run-tag run1 src/config.json
+```
+
+The output GDS file (your physical layout ready for fabrication) will be in `runs/run1/final/gds/`.
+
+### Which Setup Do I Need?
+
+| Goal | What to install | Platform |
+|------|----------------|----------|
+| **Just simulate** (RTL testbench only) | Icarus Verilog + GTKWave | macOS, Linux, Windows |
+| **Simulate + Synthesize** (see gate-level results) | + Yosys + IHP PDK | macOS, Linux, WSL2 |
+| **Full PnR flow locally** (generate GDS layout) | + Docker + OpenLane | macOS, Linux, Windows |
+| **Just submit to TinyTapeout** (let CI do the work) | Just git + GitHub account! | Any |
+
+> **Recommended for workshop:** Install iverilog + yosys + IHP PDK natively for fast iteration. Use Docker or GitHub CI for the final PnR/GDS step.
+
 ---
 
 ## Quick Start
@@ -641,23 +707,344 @@ export IHP_PDK=/path/to/IHP-Open-PDK
 
 ---
 
-## Testing with TinyTapeout Board
+## Testing on the TinyTapeout PCB
 
-The TinyTapeout demo board has an **RP2040** microcontroller that drives the input pins.
-Program the RP2040 to act as the CPU's program memory:
+Once your chip comes back from fabrication at IHP, it arrives mounted on a **TinyTapeout demo PCB**. This section explains exactly how to run your CPU on real silicon.
+
+### Board Overview
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                  TinyTapeout Demo Board                     │
+│                                                             │
+│   ┌───────────┐              ┌──────────────┐              │
+│   │           │   SPI bus    │              │              │
+│   │  RP2040   │─────────────►│  YOUR CHIP   │              │
+│   │  (MCU)    │              │  (ASIC)      │              │
+│   │           │◄─────────────│              │              │
+│   └─────┬─────┘              └──────┬───────┘              │
+│         │                           │                       │
+│   ┌─────▼─────┐              ┌──────▼───────┐              │
+│   │  USB-C    │              │   PMODs      │              │
+│   │ (power +  │              │  (I/O pins)  │              │
+│   │  program) │              │              │              │
+│   └───────────┘              └──────────────┘              │
+│                                                             │
+│   [DIP switches]       [7-seg display]       [LED bar]     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+The board has:
+- **RP2040** microcontroller — drives inputs, reads outputs, generates clock
+- **USB-C** — powers the board and lets you program the RP2040
+- **DIP switches** — manual input (directly connected to chip pins)
+- **7-segment display** — shows output values
+- **LED bar** — shows individual output bits
+- **PMODs** — breakout headers for connecting logic analyzers, extra hardware, etc.
+
+### How It Works: RP2040 = Program Memory
+
+Our CPU has **no internal ROM** — it reads instructions from its input pins every clock cycle. The **RP2040 microcontroller** on the demo board acts as the external program memory.
+
+```
+The loop (runs continuously):
+
+┌─────────┐    PC (4-bit)      ┌──────────┐
+│  ASIC   │ ──────────────────►│  RP2040  │
+│  (CPU)  │    uio[3:0]        │          │
+│         │◄───────────────────│ program  │
+│         │    ui_in[7:0]      │ ROM[]    │
+└─────────┘    (8-bit instr)   └──────────┘
+
+1. CPU outputs its PC on uio[3:0]           → "I need instruction at address 5"
+2. RP2040 reads PC from those pins          → "Address 5, let me look that up"
+3. RP2040 writes program[5] to ui_in[7:0]   → "Here's instruction 0x21 (ADD 1)"
+4. CPU latches instruction on next clk edge → executes ADD 1
+5. Repeat!
+```
+
+The RP2040 also reads the output pins (`uo_out`) and can display the accumulator value on LEDs, log it over serial, etc.
+
+### RP2040 Firmware (MicroPython)
+
+Flash this to the RP2040 on the TinyTapeout board:
+
+```python
+import machine
+import time
+
+# ── YOUR PROGRAM ── change this to run different programs!
+# Counter: counts 0 → 1 → 2 → ... → 15 → 0 then halts
+program = [
+    0x10,  # LDI 0    — load 0 into accumulator
+    0x21,  # ADD 1    — add 1
+    0xD1,  # JNZ 1    — jump to addr 1 if not zero
+    0xF0,  # HLT      — halt
+    0x00, 0x00, 0x00, 0x00,  # unused addresses (NOP)
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+]
+
+# Pin setup (adjust pin numbers for your TT board revision)
+ui_pins  = [machine.Pin(i, machine.Pin.OUT) for i in range(0, 8)]   # ui_in[7:0]
+pc_pins  = [machine.Pin(i, machine.Pin.IN)  for i in range(16, 20)] # uio[3:0]
+acc_pins = [machine.Pin(i, machine.Pin.IN)  for i in range(8, 12)]  # uo_out[3:0]
+
+def read_pc():
+    """Read 4-bit program counter from the chip."""
+    val = 0
+    for i in range(4):
+        val |= (pc_pins[i].value() << i)
+    return val
+
+def read_acc():
+    """Read 4-bit accumulator from the chip."""
+    val = 0
+    for i in range(4):
+        val |= (acc_pins[i].value() << i)
+    return val
+
+def write_instruction(instr):
+    """Write 8-bit instruction to the chip's input pins."""
+    for i in range(8):
+        ui_pins[i].value((instr >> i) & 1)
+
+# Main loop — act as program memory
+print("Nibble CPU running...")
+while True:
+    pc = read_pc()
+    instr = program[pc & 0x0F]   # mask to 4 bits (16 addresses)
+    write_instruction(instr)
+    acc = read_acc()
+    print(f"PC={pc}  INSTR=0x{instr:02X}  ACC={acc}")
+```
+
+### RP2040 Firmware (C / Arduino)
+
+For lower latency, use C firmware via the Arduino IDE:
 
 ```c
-// RP2040 firmware pseudocode
-uint8_t program[] = {0x10, 0x21, 0xD1, 0xF0};  // counter program
+// Flash via Arduino IDE with "Raspberry Pi Pico" board selected
+#include <Arduino.h>
 
-while (1) {
-    uint8_t pc = read_gpio(uio[3:0]);     // read PC from chip
-    uint8_t instr = program[pc & 0x0F];   // look up instruction
-    write_gpio(ui_in[7:0], instr);        // drive instruction to chip
+// ── YOUR PROGRAM ── Counter (0 → 15 → halt)
+uint8_t program[16] = {
+    0x10,  // LDI 0
+    0x21,  // ADD 1
+    0xD1,  // JNZ 1
+    0xF0,  // HLT
+    0x00, 0x00, 0x00, 0x00,  // unused
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+};
+
+// Pin assignments (adjust for your TT board revision)
+const int UI_PINS[8]  = {0, 1, 2, 3, 4, 5, 6, 7};    // ui_in[7:0]
+const int PC_PINS[4]  = {16, 17, 18, 19};              // uio[3:0]
+const int ACC_PINS[4] = {8, 9, 10, 11};                // uo_out[3:0]
+
+void setup() {
+    Serial.begin(115200);
+    for (int i = 0; i < 8; i++) pinMode(UI_PINS[i], OUTPUT);
+    for (int i = 0; i < 4; i++) pinMode(PC_PINS[i], INPUT);
+    for (int i = 0; i < 4; i++) pinMode(ACC_PINS[i], INPUT);
+    Serial.println("Nibble CPU running...");
+}
+
+void loop() {
+    // 1. Read PC from chip
+    uint8_t pc = 0;
+    for (int i = 0; i < 4; i++)
+        pc |= (digitalRead(PC_PINS[i]) << i);
+
+    // 2. Look up instruction in program ROM
+    uint8_t instr = program[pc & 0x0F];
+
+    // 3. Drive instruction to chip's input pins
+    for (int i = 0; i < 8; i++)
+        digitalWrite(UI_PINS[i], (instr >> i) & 1);
+
+    // 4. Read accumulator and print to serial monitor
+    uint8_t acc = 0;
+    for (int i = 0; i < 4; i++)
+        acc |= (digitalRead(ACC_PINS[i]) << i);
+
+    Serial.printf("PC=%d  INSTR=0x%02X  ACC=%d\n", pc, instr, acc);
 }
 ```
 
-Connect LEDs to `uo_out[3:0]` to see the accumulator counting!
+### Step-by-Step Testing
+
+1. **Connect the board** via USB-C to your computer
+   - This powers the board and gives you serial/programming access
+
+2. **Select your design** on the TinyTapeout board
+   - Use the TT Commander app or DIP switches to select your project's index number
+
+3. **Flash the RP2040** with one of the firmware files above
+   - MicroPython: copy the `.py` file to the Pico's drive
+   - C/Arduino: flash via Arduino IDE with "Raspberry Pi Pico" board selected
+
+4. **Press reset** — the CPU starts executing!
+   - The reset button pulls `rst_n` LOW then releases HIGH
+   - The CPU begins at `PC=0` in FETCH phase
+
+5. **Watch the LEDs** — the accumulator value appears on `uo_out[3:0]`
+   - Counter program: LEDs count 0000 → 0001 → 0010 → ... → 1111 → stop
+
+6. **Open a serial monitor** to see cycle-by-cycle execution
+   - Arduino IDE: Serial Monitor at 115200 baud
+   - Terminal: `screen /dev/ttyACM0 115200` (Linux/Mac) or use PuTTY (Windows)
+
+### What You'll See
+
+**Serial monitor output (counter program):**
+
+```
+Nibble CPU running...
+PC=0  INSTR=0x10  ACC=0       ← LDI 0
+PC=1  INSTR=0x21  ACC=0       ← fetching ADD 1
+PC=1  INSTR=0x21  ACC=1       ← executed: A = 0 + 1 = 1
+PC=2  INSTR=0xD1  ACC=1       ← JNZ 1 (A≠0, branching!)
+PC=1  INSTR=0x21  ACC=1       ← back at ADD 1
+PC=1  INSTR=0x21  ACC=2       ← A = 1 + 1 = 2
+...
+PC=1  INSTR=0x21  ACC=15      ← A = 14 + 1 = 15
+PC=1  INSTR=0x21  ACC=0       ← A = 15 + 1 = 0 (overflow!)
+PC=2  INSTR=0xD1  ACC=0       ← JNZ 1 (A=0, NOT branching)
+PC=3  INSTR=0xF0  ACC=0       ← HLT — CPU stopped!
+```
+
+**LED output pins:**
+
+```
+uo_out[3:0]  uo_out[4]  uo_out[5]  uo_out[6]  uo_out[7]
+(accumulator) (carry)    (zero)     (halted)   (phase)
+─────────────────────────────────────────────────────────
+ 0000          0          1          0          blinking   ← start (A=0, Z=1)
+ 0001          0          0          0          blinking   ← A=1
+ 0010          0          0          0          blinking   ← A=2
+ ...counting up...
+ 1111          0          0          0          blinking   ← A=15
+ 0000          1          1          1          stopped    ← halted! (C=1, Z=1)
+```
+
+### Demo Programs for the PCB
+
+Change the `program[]` array in the firmware to try these:
+
+**Fibonacci on LEDs** — watch 0, 1, 1, 2, 3, 5, 8, 13:
+
+```python
+program = [
+    0x10,  # LDI 0   → ACC=0
+    0x21,  # ADD 1   → ACC=1
+    0x20,  # ADD 0   → ACC=1
+    0x21,  # ADD 1   → ACC=2
+    0x21,  # ADD 1   → ACC=3
+    0x22,  # ADD 2   → ACC=5
+    0x23,  # ADD 3   → ACC=8
+    0x25,  # ADD 5   → ACC=13
+    0xF0,  # HLT
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+]
+```
+
+**Knight Rider** — LED bounces left and right forever:
+
+```python
+program = [
+    0x11,  # LDI 1   → 0001
+    0x80,  # SHL     → 0010
+    0x80,  # SHL     → 0100
+    0x80,  # SHL     → 1000
+    0x90,  # SHR     → 0100
+    0x90,  # SHR     → 0010
+    0xA0,  # JMP 0   → loop back!
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+]
+```
+
+**Countdown from 15** — counts down and halts:
+
+```python
+program = [
+    0x1F,  # LDI 15  → ACC=15
+    0x31,  # SUB 1   → ACC=14, 13, 12, ...
+    0xD1,  # JNZ 1   → loop until ACC=0
+    0xF0,  # HLT
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+]
+```
+
+### Using DIP Switches as Input
+
+The **IN** instruction (`0xE0`) reads the 4-bit value from `uio[7:4]`. On the TinyTapeout board, you can connect DIP switches to these pins so users can interact with the CPU in real time.
+
+```
+DIP Switches                          LEDs
+┌───┬───┬───┬───┐                    ┌───┬───┬───┬───┐
+│ 3 │ 2 │ 1 │ 0 │ ← set a number    │ 3 │ 2 │ 1 │ 0 │ ← see result
+└─┬─┴─┬─┴─┬─┴─┬─┘                    └─▲─┴─▲─┴─▲─┴─▲─┘
+  │   │   │   │                          │   │   │   │
+uio[7] [6] [5] [4]                  uo_out[3] [2] [1] [0]
+  │   │   │   │                          │   │   │   │
+  └───┴───┴───┴──────► ASIC ────────────┴───┴───┴───┘
+```
+
+**Example: "Double the input" program:**
+
+```
+Addr  Hex   Assembly    What it does
+----  ----  ---------   ---------------------------
+0x0   0xE0  IN          Read DIP switches into A
+0x1   0x80  SHL         Shift left = multiply by 2
+0x2   0xF0  HLT         Show result on LEDs
+```
+
+Set DIP = 0101 (5) → LEDs show 1010 (10)!
+Set DIP = 0011 (3) → LEDs show 0110 (6)!
+
+**Example: "Is input zero?" program:**
+
+```
+Addr  Hex   Assembly    What it does
+----  ----  ---------   ---------------------------
+0x0   0xE0  IN          Read DIP switches into A
+0x1   0xB4  JZ 4        If zero, jump to addr 4
+0x2   0x10  LDI 0       Not zero: output 0
+0x3   0xF0  HLT         Halt
+0x4   0x11  LDI 1       Zero: output 1
+0x5   0xF0  HLT         Halt
+```
+
+### Clock Speed Tips
+
+The RP2040 generates the clock for the ASIC. Adjusting the clock speed is key for demos vs debugging:
+
+| Clock Speed | Use Case |
+|-------------|----------|
+| **1 - 10 Hz** | Debugging — watch each instruction execute in real-time, count LED changes by eye |
+| **~2 Hz** | Demo — counter program counts visibly |
+| **~4 Hz** | Demo — Knight Rider LED sweep looks smooth |
+| **1 kHz** | Fast execution — results appear instantly but RP2040 can still keep up |
+| **1 MHz** | Full speed — 500,000 instructions/sec, RP2040 must be optimized to keep up |
+
+> **How to set clock speed:** The TT board generates the clock from the RP2040. Configure it in the TinyTapeout SDK, or set it manually via the RP2040 firmware using a PWM output. Default is typically 10 MHz — **slow it down for visual demos!**
+
+### Troubleshooting
+
+| Symptom | Likely Cause | Fix |
+|---------|-------------|-----|
+| All LEDs off | Wrong project selected | Check project index on DIP switches or TT Commander app |
+| LEDs stuck at 0000 | CPU in reset or halted | Press reset button; check RP2040 firmware is running |
+| Random LED pattern | RP2040 not driving instructions | Reflash firmware; check pin assignments match your board revision |
+| Phase LED not blinking | Clock not running | Check clock source setting; try a slower clock for debugging |
+| Halted LED on immediately | First instruction is HLT or memory is all zeros | Check `program[]` array starts with valid instructions |
+| Accumulator shows wrong values | Clock too fast for RP2040 loop | Slow clock to 1 kHz or add a delay in the RP2040 firmware |
+| Serial monitor shows garbage | Wrong baud rate | Set serial monitor to 115200 baud |
+| "No device found" when flashing | RP2040 not in bootloader mode | Hold BOOTSEL button while plugging in USB |
 
 ---
 
@@ -676,6 +1063,8 @@ Connect LEDs to `uo_out[3:0]` to see the accumulator counting!
 │   └── synth.tcl            Alternative Tcl synthesis script
 ├── docs/
 │   └── info.md              TinyTapeout project documentation
+├── workshop/
+│   └── slides.html          Workshop presentation (open in browser)
 ├── outputs/                  Generated: netlists, stats (gitignored)
 ├── info.yaml                TinyTapeout project config (yaml v6)
 ├── Makefile                 Build targets: test, synth, test_gl, wave
