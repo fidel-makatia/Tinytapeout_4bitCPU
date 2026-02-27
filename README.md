@@ -419,7 +419,7 @@ Nibble is a **Harvard-architecture** accumulator machine:
 
 ## 9. Block Diagram
 
-![ALU Diagram](https://raw.githubusercontent.com)
+![ALU Diagram](alu1.png)
 ---
 
 ## 10. Detailed Schematic
