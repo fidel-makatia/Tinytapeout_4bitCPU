@@ -1,0 +1,34 @@
+name: Build & Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y iverilog yosys
+
+      - name: Clone IHP PDK
+        run: git clone --depth 1 https://github.com/IHP-GmbH/IHP-Open-PDK.git ~/IHP-Open-PDK
+
+      - name: RTL Simulation
+        run: make test
+
+      - name: Synthesis (IHP SG13G2)
+        run: make synth
+        env:
+          IHP_PDK: ~/IHP-Open-PDK
+
+      - name: Gate-Level Simulation
+        run: make test_gl
+        env:
+          IHP_PDK: ~/IHP-Open-PDK
