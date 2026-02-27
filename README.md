@@ -2,484 +2,308 @@
 
 A minimal 4-bit accumulator CPU designed for fabrication on IHP SG13G2 130nm through [TinyTapeout](https://tinytapeout.com). Fits in a single tile (194 standard cells, 15% utilization). Fully verified at both RTL and gate-level.
 
+---
+
 ## Table of Contents
 
-- [Architecture Overview](#architecture-overview)
-- [Block Diagram](#block-diagram)
-- [Detailed Schematic](#detailed-schematic)
-  - [Register File](#1-register-file-20-flip-flops)
-  - [Instruction Decoder](#2-instruction-decoder)
-  - [ALU](#3-alu-arithmetic-logic-unit)
-  - [Branch Logic](#4-branch-logic)
-  - [Fetch-Execute FSM](#5-fetch-execute-fsm)
-- [Instruction Set](#instruction-set)
-- [TinyTapeout Pin Mapping](#tinytapeout-pin-mapping)
-- [Example Programs](#example-programs)
-- [Verilog Playground (Zero Install)](#verilog-playground-zero-install)
-- [TinyTapeout Web Design Flow](#tinytapeout-web-design-flow)
-- [Tool Installation](#tool-installation)
-  - [macOS](#macos)
-  - [Windows](#windows-wsl2)
-  - [Linux (Ubuntu/Debian)](#linux-ubuntudebian)
-  - [Code Editor (VS Code)](#code-editor-vs-code)
-  - [Docker (All Platforms)](#docker-all-platforms)
-  - [Which Setup Do I Need?](#which-setup-do-i-need)
-  - [Post-Install Verification](#post-install-verification)
-- [Quick Start](#quick-start)
-- [Workshop Guide](#workshop-guide)
-- [Synthesis Results](#synthesis-results)
-- [Testing on the TinyTapeout PCB](#testing-on-the-tinytapeout-pcb)
-  - [Board Overview](#board-overview)
-  - [How It Works: RP2040 = Program Memory](#how-it-works-rp2040--program-memory)
-  - [RP2040 Firmware (MicroPython)](#rp2040-firmware-micropython)
-  - [RP2040 Firmware (C / Arduino)](#rp2040-firmware-c--arduino)
-  - [Step-by-Step Testing](#step-by-step-testing)
-  - [What You'll See](#what-youll-see)
-  - [Demo Programs for the PCB](#demo-programs-for-the-pcb)
-  - [Using DIP Switches as Input](#using-dip-switches-as-input)
-  - [Clock Speed Tips](#clock-speed-tips)
-  - [Troubleshooting](#troubleshooting)
+### Part A — Pre-Workshop Setup
+
+> **Do this before the workshop!** Install tools, verify everything works, and warm up with online Verilog editors.
+
+1. [Which Setup Do I Need?](#1-which-setup-do-i-need)
+2. [Tool Installation](#2-tool-installation)
+   - [macOS](#macos)
+   - [Windows (WSL2)](#windows-wsl2)
+   - [Linux (Ubuntu/Debian)](#linux-ubuntudebian)
+3. [Docker Setup (All Platforms)](#3-docker-setup-all-platforms)
+4. [Code Editor (VS Code)](#4-code-editor-vs-code)
+5. [Post-Install Verification](#5-post-install-verification)
+6. [Verilog Playground (Zero Install)](#6-verilog-playground-zero-install)
+7. [TinyTapeout Web Design Flow](#7-tinytapeout-web-design-flow)
+
+### Part B — The Nibble CPU
+
+> **Workshop content.** Architecture, instruction set, schematics, and example programs.
+
+8. [Architecture Overview](#8-architecture-overview)
+9. [Block Diagram](#9-block-diagram)
+10. [Detailed Schematic](#10-detailed-schematic)
+    - [Register File](#101-register-file-20-flip-flops)
+    - [Instruction Decoder](#102-instruction-decoder)
+    - [ALU](#103-alu-arithmetic-logic-unit)
+    - [Branch Logic](#104-branch-logic)
+    - [Fetch-Execute FSM](#105-fetch-execute-fsm)
+    - [Gate-Level Cell Usage](#106-gate-level-cell-usage-ihp-sg13g2)
+11. [Instruction Set](#11-instruction-set)
+12. [TinyTapeout Pin Mapping](#12-tinytapeout-pin-mapping)
+13. [Example Programs](#13-example-programs)
+
+### Part C — Build, Simulate & Synthesize
+
+> **Hands-on.** Run the RTL simulation, synthesize to silicon, verify the gate-level netlist.
+
+14. [Quick Start](#14-quick-start)
+15. [Workshop Guide](#15-workshop-guide)
+16. [Synthesis Results](#16-synthesis-results)
+
+### Part D — Testing on Real Silicon
+
+> **After fabrication.** Run your CPU on the TinyTapeout demo PCB.
+
+17. [Testing on the TinyTapeout PCB](#17-testing-on-the-tinytapeout-pcb)
+    - [Board Overview](#board-overview)
+    - [How It Works: RP2040 = Program Memory](#how-it-works-rp2040--program-memory)
+    - [RP2040 Firmware (MicroPython)](#rp2040-firmware-micropython)
+    - [RP2040 Firmware (C / Arduino)](#rp2040-firmware-c--arduino)
+    - [Step-by-Step Testing](#step-by-step-testing)
+    - [What You'll See](#what-youll-see)
+    - [Demo Programs for the PCB](#demo-programs-for-the-pcb)
+    - [Using DIP Switches as Input](#using-dip-switches-as-input)
+    - [Clock Speed Tips](#clock-speed-tips)
+    - [Troubleshooting (PCB)](#troubleshooting-pcb)
+
+### Part E — Reference
+
+18. [Repository Structure](#18-repository-structure)
+19. [License](#19-license)
 
 ---
 
-## Architecture Overview
+# Part A — Pre-Workshop Setup
 
-Nibble is a **Harvard-architecture** accumulator machine:
-
-- **Data width:** 4 bits
-- **Instruction width:** 8 bits (`[7:4]` = opcode, `[3:0]` = immediate/address)
-- **Registers:** Accumulator (A), Program Counter (PC), Instruction Register (IR)
-- **Flags:** Carry (C), Zero (Z)
-- **Pipeline:** 2-cycle fetch-execute (1 instruction every 2 clock cycles)
-- **Memory:** External program memory via input pins (no internal ROM)
-- **I/O:** 4-bit input port, accumulator always visible on output
+> **Please complete these steps before the workshop.** Having your tools installed and verified saves us time on the day. If you get stuck, bring your laptop and we'll help you in person.
 
 ---
 
-## Block Diagram
+## 1. Which Setup Do I Need?
 
-```
-                        TinyTapeout IHP Chip
-    ┌──────────────────────────────────────────────────────┐
-    │                                                      │
-    │  ui_in[7:0] ──────────┐                              │
-    │  (instruction)        │                              │
-    │                   ┌───▼───┐    ┌────────────┐        │
-    │                   │  IR   │───►│  OPCODE    │        │
-    │                   │ 8-bit │    │  DECODER   │        │
-    │                   └───────┘    └─────┬──────┘        │
-    │                                      │ control       │
-    │                       ┌──────────────┼──────────┐    │
-    │                       │              │          │    │
-    │                   ┌───▼───┐    ┌─────▼────┐    │    │
-    │  uio[7:4] ──────►│  MUX  │───►│   ALU    │    │    │
-    │  (input port)     │ 4-bit │    │  4-bit   │    │    │
-    │                   └───────┘    │ +,-,&,|  │    │    │
-    │                                │ ^,~,<<,>>│    │    │
-    │                   ┌────────┐   └──┬───┬───┘    │    │
-    │                   │  ACC   │◄─────┘   │        │    │
-    │                   │ 4-bit  │──────────┼──►uo_out[3:0]
-    │                   └────────┘     C,Z  │        │    │
-    │                                  flags│        │    │
-    │                   ┌────────┐   ┌──▼───▼──┐     │    │
-    │                   │   PC   │◄──┤ BRANCH  │     │    │
-    │                   │ 4-bit  │   │  LOGIC  │     │    │
-    │                   └───┬────┘   └─────────┘     │    │
-    │                       │                        │    │
-    │                       └──────────────────────►uio[3:0]
-    │                         (address bus)          │    │
-    │                                                │    │
-    │                   ┌────────┐                   │    │
-    │            clk───►│ FETCH/ │───────────────────┘    │
-    │          rst_n───►│EXECUTE │   uo_out[7] = phase    │
-    │                   │  FSM   │   uo_out[6] = halted   │
-    │                   └────────┘   uo_out[5] = zero     │
-    │                                uo_out[4] = carry    │
-    └──────────────────────────────────────────────────────┘
-```
+| Your Goal | What to Install | Time |
+|-----------|----------------|------|
+| **Just simulate** (write Verilog, run testbenches, view waveforms) | Icarus Verilog + GTKWave | ~5 min |
+| **Simulate + Synthesize** (see gate counts, standard cells) | + Yosys + IHP PDK | ~10 min |
+| **Full Place & Route** (generate GDS layout for fabrication) | + Docker + OpenLane | ~15 min |
+| **Just submit to TinyTapeout** (let GitHub CI do everything) | Just git + a GitHub account! | ~2 min |
+
+> **Recommended for the workshop:** Install iverilog + yosys + IHP PDK natively for fast iteration. Use Docker or GitHub CI for the final PnR/GDS step.
 
 ---
 
-## Detailed Schematic
+## 2. Tool Installation
 
-Below is the gate-level breakdown of each CPU subsystem. After synthesis to IHP SG13G2, the CPU uses **194 standard cells** (20 flip-flops + 174 combinational gates).
+### macOS
 
-### 1. Register File (20 Flip-Flops)
+```bash
+# 1. Install Homebrew (if not already installed)
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
-All state is held in D flip-flops with async active-low reset (`sg13g2_dfrbpq_1`):
+# 2. Install simulation tools
+brew install icarus-verilog        # Verilog simulator (iverilog)
+brew install --cask gtkwave        # Waveform viewer
 
-```
-                    ┌──────────────────────────────────────────────┐
-                    │            REGISTER FILE (20 DFFs)           │
-                    │                                              │
-    clk ───────────►│  ACC[3:0]    4 x DFF ──► uo_out[3:0]       │
-    rst_n ─────────►│  PC[3:0]     4 x DFF ──► uio_out[3:0]      │
-                    │  IR[7:0]     8 x DFF     (internal)         │
-                    │  carry       1 x DFF ──► uo_out[4]          │
-                    │  zero        1 x DFF ──► uo_out[5]          │
-                    │  halted      1 x DFF ──► uo_out[6]          │
-                    │  phase       1 x DFF ──► uo_out[7]          │
-                    │                                              │
-                    │  Total: 4+4+8+1+1+1+1 = 20 flip-flops      │
-                    └──────────────────────────────────────────────┘
+# 3. Install synthesis tool
+brew install yosys                 # RTL synthesis
 
-    Each DFF (sg13g2_dfrbpq_1):
-    ┌─────────┐
-    │  D    Q ├──► output
-    │         │
-    │ CLK    ─┤◄── clk
-    │ RST_B ─┤◄── rst_n (active low: Q=0 when RST_B=0)
-    └─────────┘
-```
+# 4. Install IHP PDK (standard cell library)
+cd ~
+git clone --depth 1 https://github.com/IHP-GmbH/IHP-Open-PDK.git
 
-### 2. Instruction Decoder
+# 5. Verify installation
+iverilog -V | head -1              # should print version
+yosys --version                    # should print version
+ls ~/IHP-Open-PDK/ihp-sg13g2/     # should list libs.ref, libs.tech, etc.
 
-The opcode decoder splits the 8-bit instruction register and generates control signals:
+# 6. (Optional) Install Python for cocotb testing
+brew install python3
+pip3 install cocotb
 
-```
-    IR[7:0]
-    ┌────────────────────────┐
-    │ 7  6  5  4 │ 3  2  1  0│
-    │   OPCODE   │IMMEDIATE  │
-    └──────┬─────┴─────┬─────┘
-           │           │
-           ▼           ▼
-    ┌─────────────┐   imm[3:0] ──► ALU operand B
-    │   4-to-16   │              ──► Branch target
-    │   DECODER   │              ──► LDI value
-    │             │
-    │ (AND/NOR/   │
-    │  NAND gates)│
-    └──────┬──────┘
-           │
-           ▼ 16 control lines (active for each opcode)
-    ┌──────────────────────────────────────────────┐
-    │ is_NOP  is_LDI  is_ADD  is_SUB              │
-    │ is_AND  is_OR   is_XOR  is_NOT              │
-    │ is_SHL  is_SHR  is_JMP  is_JZ               │
-    │ is_JC   is_JNZ  is_IN   is_HLT              │
-    └──────────────────────────────────────────────┘
-
-    Example decode for opcode = 4'b0010 (ADD):
-    ┌─────┐
-    │ NOT ├◄── IR[7]  ──► IR[7]' = 1
-    └──┬──┘
-    ┌──▼──────────────────────┐
-    │       AND4              │
-    │  IR[7]' & IR[6]'       │──► is_ADD = 1
-    │  & IR[5] & IR[4]'      │
-    └─────────────────────────┘
+# 7. (Optional) Docker for full OpenLane PnR flow
+# Install Docker Desktop from https://www.docker.com/products/docker-desktop/
 ```
 
-### 3. ALU (Arithmetic Logic Unit)
+### Windows (WSL2)
 
-The ALU is **purely combinational** — it computes the result every cycle, but the result is only latched into ACC during the EXECUTE phase.
+Windows users should use WSL2 (Windows Subsystem for Linux). All tools run natively in WSL2.
 
-```
-    ┌───────────────────────────────────────────────────┐
-    │                   4-BIT ALU                       │
-    │                                                   │
-    │   ACC[3:0] ──►┌──────┐                           │
-    │               │ 4-BIT│──► sum[3:0]  ──┐          │
-    │   imm[3:0] ──►│ ADDER│──► cout      ──┤          │
-    │               └──────┘                │          │
-    │                                       │          │
-    │   ACC[3:0] ──►┌──────┐               ┌▼────────┐│
-    │               │ 4-BIT│──► diff[3:0]──►│         ││
-    │   imm[3:0] ──►│SUBTR │──► bout     ──►│  RESULT ││
-    │               └──────┘               │   MUX   ││──► next_acc[3:0]
-    │                                      │         ││──► next_carry
-    │   ACC[3:0] ──►─── AND ──► and[3:0]──►│ (16:1)  ││──► next_zero
-    │   imm[3:0] ──►─── AND               │         ││
-    │                                      │ select: ││
-    │   ACC[3:0] ──►─── OR  ──► or[3:0] ──►│ opcode  ││
-    │   imm[3:0] ──►─── OR                │         ││
-    │                                      │         ││
-    │   ACC[3:0] ──►─── XOR ──► xor[3:0]──►│         ││
-    │   imm[3:0] ──►─── XOR               │         ││
-    │                                      │         ││
-    │   ACC[3:0] ──►─── NOT ──► not[3:0]──►│         ││
-    │                                      │         ││
-    │   ACC[3:0] ──►─── SHL ──► shl[3:0]──►│         ││
-    │              (shift left, MSB→carry) │         ││
-    │                                      │         ││
-    │   ACC[3:0] ──►─── SHR ──► shr[3:0]──►│         ││
-    │              (shift right, LSB→carry)│         ││
-    │                                      │         ││
-    │   port_in[3:0] ─────────► in[3:0] ──►│         ││
-    │                                      │         ││
-    │   imm[3:0] ─────────────► ldi[3:0]──►│         ││
-    │                                      └─────────┘│
-    │                                                   │
-    │   Zero detect: NOR(result[3], result[2],         │
-    │                    result[1], result[0]) ──► Z   │
-    └───────────────────────────────────────────────────┘
+```powershell
+# Step 1: Install WSL2 (run in PowerShell as Administrator)
+wsl --install -d Ubuntu-22.04
 
-    4-bit Adder Detail (ripple carry):
-    ┌──────┐  ┌──────┐  ┌──────┐  ┌──────┐
-    │  FA  │──│  FA  │──│  FA  │──│  FA  │──► Cout
-    │ [0]  │  │ [1]  │  │ [2]  │  │ [3]  │
-    └──┬───┘  └──┬───┘  └──┬───┘  └──┬───┘
-       ▼         ▼         ▼         ▼
-    sum[0]    sum[1]    sum[2]    sum[3]
-
-    Full Adder (FA) gate-level:
-         A ──┬──►XOR──┬──►XOR──► Sum
-         B ──┘        │    ▲
-                      │   Cin
-         A ──┬──►AND──┘
-         B ──┘        ├──►OR ──► Cout
-        Cin──┬──►AND──┘
-    (A^B)────┘
+# Step 2: Restart your computer, then open "Ubuntu" from Start menu
 ```
 
-### 4. Branch Logic
+Then inside the WSL2 Ubuntu terminal, follow the **Linux** instructions below.
 
-Determines whether to load PC from `imm[3:0]` (branch taken) or `PC+1` (sequential):
+**Alternative: Without WSL2** (limited, simulation only)
 
-```
-    ┌───────────────────────────────────────────┐
-    │             BRANCH LOGIC                  │
-    │                                           │
-    │   is_JMP ────────────────────►OR──┐       │
-    │                                   │       │
-    │   is_JZ  ──►AND──┐              │       │
-    │   zero ────►AND──┴──►OR─────────►OR──┐   │
-    │                                      │   │
-    │   is_JC  ──►AND──┐                  │   │
-    │   carry ───►AND──┴──►OR─────────────►OR──┤
-    │                                          │
-    │   is_JNZ ──►AND──┐                      │
-    │   ~zero ───►AND──┴──►OR─────────────────┤
-    │                                          │
-    │                              take_branch │
-    │                                          ▼
-    │   ┌─────────────┐          ┌───────────────┐
-    │   │   PC + 1    │──────────►│     MUX       │──► next_pc[3:0]
-    │   │ (4-bit incr)│          │  0: PC+1      │
-    │   └─────────────┘          │  1: imm[3:0]  │
-    │                            │  sel: branch  │
-    │   imm[3:0] ────────────────►│               │
-    │                            └───────────────┘
-    └───────────────────────────────────────────┘
+```powershell
+# Install via MSYS2 (https://www.msys2.org/)
+# After installing MSYS2, open MSYS2 MINGW64 terminal:
+pacman -S mingw-w64-x86_64-iverilog
+pacman -S mingw-w64-x86_64-yosys
+
+# Or use OSS CAD Suite (all-in-one):
+# Download from https://github.com/YosysHQ/oss-cad-suite-build/releases
+# Extract and add to PATH
 ```
 
-### 5. Fetch-Execute FSM
+### Linux (Ubuntu/Debian)
 
-A single flip-flop (`phase`) controls the 2-cycle pipeline:
+```bash
+# 1. Install simulation tools
+sudo apt update
+sudo apt install -y iverilog gtkwave
 
-```
-    ┌──────────────────────────────────────────────────────┐
-    │              FETCH-EXECUTE STATE MACHINE              │
-    │                                                      │
-    │   reset ──► phase = 0 (FETCH)                        │
-    │                                                      │
-    │   ┌─────────┐         ┌─────────────┐               │
-    │   │  FETCH  │────────►│  EXECUTE    │               │
-    │   │ phase=0 │         │  phase=1    │               │
-    │   │         │◄────────│             │               │
-    │   └─────────┘         └─────────────┘               │
-    │                                                      │
-    │   FETCH (phase=0):             EXECUTE (phase=1):    │
-    │    IR <= ui_in[7:0]            ACC   <= next_acc     │
-    │    phase <= 1                  PC    <= next_pc      │
-    │                                carry <= next_carry   │
-    │                                zero  <= next_zero    │
-    │                                halted<= next_halted  │
-    │                                phase <= 0            │
-    │                                                      │
-    │   HALT check: if halted=1, FSM stops                │
-    │   (clock keeps running, registers frozen)            │
-    └──────────────────────────────────────────────────────┘
+# 2. Install synthesis tool
+sudo apt install -y yosys
 
-    Timing Diagram:
-    ─────────────────────────────────────────────────────────
-    clk     ╱╲__╱╲__╱╲__╱╲__╱╲__╱╲__╱╲__╱╲__╱╲__
-    phase   ___0____1____0____1____0____1____0____
-    action  FETCH EXEC  FETCH EXEC  FETCH EXEC
-             instr0      instr1      instr2
-    PC out   0          1          2
-    ACC      ----  res0  ---- res1  ---- res2
-    ─────────────────────────────────────────────────────────
-```
+# If the packaged yosys is too old, install from source or use OSS CAD Suite:
+# wget https://github.com/YosysHQ/oss-cad-suite-build/releases/download/2024-02-01/oss-cad-suite-linux-x64-20240201.tgz
+# tar xzf oss-cad-suite-linux-x64-*.tgz
+# export PATH="$PWD/oss-cad-suite/bin:$PATH"
 
-### Complete Gate-Level Cell Usage (IHP SG13G2)
+# 3. Install IHP PDK
+cd ~
+git clone --depth 1 https://github.com/IHP-GmbH/IHP-Open-PDK.git
 
-```
-    Cell Type           Count    Function
-    ─────────────────────────────────────────────
-    sg13g2_dfrbpq_1       20    D flip-flop (async reset)
-    sg13g2_nor2_1         17    2-input NOR
-    sg13g2_o21ai_1        15    OR-AND-INV: ~((A|B)&C)
-    sg13g2_nand2_1        15    2-input NAND
-    sg13g2_a22oi_1        15    AND-OR-INV: ~((A&B)|(C&D))
-    sg13g2_nand3_1        14    3-input NAND
-    sg13g2_inv_1          14    Inverter
-    sg13g2_and2_1         10    2-input AND
-    sg13g2_a21oi_1        10    AND-OR-INV: ~((A&B)|C)
-    sg13g2_nor4_1          9    4-input NOR
-    sg13g2_nand2b_1        9    NAND with inverted input
-    sg13g2_mux2_1          8    2:1 Multiplexer
-    sg13g2_xnor2_1         6    2-input XNOR
-    sg13g2_nor3_1          6    3-input NOR
-    sg13g2_nand4_1         6    4-input NAND
-    sg13g2_a221oi_1        5    AND-AND-OR-INV
-    sg13g2_xor2_1          4    2-input XOR
-    sg13g2_nor2b_1         4    NOR with inverted input
-    sg13g2_nand3b_1        3    NAND with inverted input
-    sg13g2_or2_1           2    2-input OR
-    sg13g2_and4_1          1    4-input AND
-    sg13g2_and3_1          1    3-input AND
-    ─────────────────────────────────────────────
-    TOTAL                194    cells
-    Chip Area        2,677 um²  (15% of 1x1 tile)
-    Sequential          20      flip-flops (37% of area)
-    Combinational      174      logic gates
+# 4. Verify
+iverilog -V | head -1
+yosys --version
+ls ~/IHP-Open-PDK/ihp-sg13g2/
+
+# 5. (Optional) Docker for full OpenLane PnR flow
+sudo apt install -y docker.io
+sudo usermod -aG docker $USER
+# Log out and back in for group change to take effect
 ```
 
 ---
 
-## Instruction Set
+## 3. Docker Setup (All Platforms)
 
-```
-Opcode  Hex    Mnemonic    Operation                    Flags
-──────  ───    ────────    ─────────                    ─────
-0000    0x0    NOP         No operation                 -
-0001    0x1    LDI imm     A = imm                      Z
-0010    0x2    ADD imm     A = A + imm                  C, Z
-0011    0x3    SUB imm     A = A - imm                  C, Z
-0100    0x4    AND imm     A = A & imm                  Z
-0101    0x5    OR  imm     A = A | imm                  Z
-0110    0x6    XOR imm     A = A ^ imm                  Z
-0111    0x7    NOT         A = ~A                       Z
-1000    0x8    SHL         {C,A} = {A[3], A<<1}         C, Z
-1001    0x9    SHR         {A,C} = {A>>1, A[0]}         C, Z
-1010    0xA    JMP addr    PC = addr                    -
-1011    0xB    JZ  addr    if Z: PC = addr              -
-1100    0xC    JC  addr    if C: PC = addr              -
-1101    0xD    JNZ addr    if !Z: PC = addr             -
-1110    0xE    IN          A = input_port               Z
-1111    0xF    HLT         Halt CPU                     -
+Docker gives you a **complete, pre-configured environment** for running the full OpenLane Place & Route flow. No manual tool installation needed — everything runs inside a container.
+
+### Step 1: Install Docker
+
+| Platform | How to Install |
+|----------|---------------|
+| **macOS** | Download [Docker Desktop](https://www.docker.com/products/docker-desktop/), install, and start it |
+| **Windows** | Download [Docker Desktop](https://www.docker.com/products/docker-desktop/), install (enable WSL2 backend), and start it |
+| **Linux** | `sudo apt install -y docker.io && sudo usermod -aG docker $USER` then log out and back in |
+
+### Step 2: Verify Docker is running
+
+```bash
+docker --version
+docker run hello-world    # should print "Hello from Docker!"
 ```
 
-**Instruction encoding:** `[7:4]` = opcode, `[3:0]` = 4-bit immediate or jump address.
+### Step 3: Run the full OpenLane PnR flow
 
-**Flags:**
-- **C (Carry):** Set on ADD overflow, SUB borrow, SHL/SHR bit shifted out
-- **Z (Zero):** Set when result is `4'b0000`
+```bash
+# Pull the TinyTapeout IHP OpenLane image
+docker pull ghcr.io/tinytapeout/openlane2:latest
+
+# Clone the TinyTapeout IHP template
+git clone https://github.com/TinyTapeout/ttihp-verilog-template.git
+cd ttihp-verilog-template
+
+# Copy your design files into the template
+cp /path/to/Tinytapeout_4bitCPU/src/project.v src/
+cp /path/to/Tinytapeout_4bitCPU/src/cpu_core.v src/
+cp /path/to/Tinytapeout_4bitCPU/src/config.json src/
+cp /path/to/Tinytapeout_4bitCPU/info.yaml .
+
+# Run the full hardening flow (synthesis → place & route → GDS)
+docker run --rm -v $(pwd):/work -w /work \
+  ghcr.io/tinytapeout/openlane2:latest \
+  python -m openlane --run-tag run1 src/config.json
+```
+
+The output GDS file (your physical layout ready for fabrication) will be in `runs/run1/final/gds/`.
 
 ---
 
-## TinyTapeout Pin Mapping
+## 4. Code Editor (VS Code)
 
-```
-    ┌──────────────────────────────────────────────────┐
-    │              TinyTapeout IHP Tile                 │
-    │                                                  │
-    │  ACTIVE-LOW ACTIVE-  ACTIVE-                     │
-    │   RESET     HIGH     HIGH                        │
-    │  ┌─────┐  ┌─────┐  ┌─────┐                      │
-    │  │rst_n│  │ clk │  │ ena │                       │
-    │  └──┬──┘  └──┬──┘  └──┬──┘                       │
-    │     ▼        ▼        ▼                          │
-    ├──────────────────────────────────────────────────┤
-    │           ACTIVE ACTIVE                          │
-    │           ACTIVE ACTIVE                          │
-    │   ACTIVE  ┌─────────┐  ACTIVE  ┌─────────┐      │
-    │   ACTIVE  │ ui_in   │  ACTIVE  │ uo_out  │      │
-    │           │ [7:0]   │          │ [7:0]   │      │
-    │           └─────────┘          └─────────┘      │
-    │                                                  │
-    │           ┌─────────┐                            │
-    │           │  uio    │                            │
-    │           │ [7:0]   │                            │
-    │           └─────────┘                            │
-    └──────────────────────────────────────────────────┘
+A good editor makes writing Verilog much easier. VS Code with the Verilog extension gives you syntax highlighting, auto-complete, and live error checking.
+
+**Install VS Code:**
+
+Download from [code.visualstudio.com](https://code.visualstudio.com/) (macOS, Windows, Linux).
+
+**Install the Verilog extension:**
+
+```bash
+code --install-extension mshr-h.VerilogHDL
 ```
 
-| Pin | Dir | Signal | Connect to |
-|-----|-----|--------|------------|
-| `ui_in[7]` | in | Instruction bit 7 (opcode MSB) | RP2040 / EEPROM data |
-| `ui_in[6]` | in | Instruction bit 6 | " |
-| `ui_in[5]` | in | Instruction bit 5 | " |
-| `ui_in[4]` | in | Instruction bit 4 (opcode LSB) | " |
-| `ui_in[3]` | in | Instruction bit 3 (imm MSB) | " |
-| `ui_in[2]` | in | Instruction bit 2 | " |
-| `ui_in[1]` | in | Instruction bit 1 | " |
-| `ui_in[0]` | in | Instruction bit 0 (imm LSB) | " |
-| `uo_out[3:0]` | out | **Accumulator** | LEDs (see your result!) |
-| `uo_out[4]` | out | Carry flag | LED |
-| `uo_out[5]` | out | Zero flag | LED |
-| `uo_out[6]` | out | Halted | LED |
-| `uo_out[7]` | out | Phase (0=fetch, 1=exec) | LED / scope |
-| `uio[3:0]` | out | **Program Counter** | RP2040 / EEPROM address |
-| `uio[7:4]` | in | Input port (for IN) | DIP switches / RP2040 |
+**Configure linting** (uses iverilog as backend — must be installed first):
+
+Open VS Code Settings (Ctrl+, or Cmd+,) and add:
+
+```json
+{
+    "verilog.linting.linter": "iverilog",
+    "verilog.linting.iverilog.arguments": "-g2012 -Wall"
+}
+```
+
+Now VS Code shows errors **as you type** — red squiggles on syntax errors, warnings on unused signals. This catches bugs before you even run the simulator.
+
+**Alternatives:** Sublime Text, Vim/Neovim (with verilog plugin), or just use [EDA Playground](https://www.edaplayground.com/) in the browser.
 
 ---
 
-## Example Programs
+## 5. Post-Install Verification
 
-### Counter (counts 0-15 on LEDs, then halts)
+Run these steps **one by one** after installation. Each step tests a specific tool — if one fails, you know exactly what's broken:
 
-```
-Addr  Hex   Binary      Assembly    Description
-----  ----  ----------  ---------   -------------------------
-0x0   0x10  0001 0000   LDI 0       Load 0 into accumulator
-0x1   0x21  0010 0001   ADD 1       Add 1
-0x2   0xD1  1101 0001   JNZ 1       Loop back if not zero
-0x3   0xF0  1111 0000   HLT         Halt (A wrapped to 0)
-```
+```bash
+# ── Step 1: Check tools are installed ──
+iverilog -V 2>&1 | head -1       # expect: "Icarus Verilog version 1x.x"
+yosys --version                   # expect: "Yosys 0.xx"
+ls ~/IHP-Open-PDK/ihp-sg13g2/    # expect: libs.ref  libs.tech  ...
 
-### Fibonacci (0, 1, 1, 2, 3, 5, 8, 13)
+# ── Step 2: Clone the project ──
+git clone https://github.com/fidel-makatia/Tinytapeout_4bitCPU.git
+cd Tinytapeout_4bitCPU
 
-```
-Addr  Hex   Assembly    ACC after
-----  ----  ---------   ---------
-0x0   0x10  LDI 0       0
-0x1   0x21  ADD 1       1
-0x2   0x20  ADD 0       1
-0x3   0x21  ADD 1       2
-0x4   0x21  ADD 1       3
-0x5   0x22  ADD 2       5
-0x6   0x23  ADD 3       8
-0x7   0x25  ADD 5       13
-0x8   0xF0  HLT         (halted)
-```
+# ── Step 3: RTL simulation (tests iverilog) ──
+make test
+# ✅ expect: "RESULTS: 51 / 51 passed — ALL TESTS PASSED"
 
-### Shift & Carry test
+# ── Step 4: Synthesis (tests yosys + IHP PDK) ──
+IHP_PDK=~/IHP-Open-PDK make synth
+# ✅ expect: "Number of cells: 194"
 
-```
-Addr  Hex   Assembly    ACC   C  Z
-----  ----  ---------   ----  -  -
-0x0   0x11  LDI 1       0001  0  0
-0x1   0x80  SHL         0010  0  0
-0x2   0x80  SHL         0100  0  0
-0x3   0x80  SHL         1000  0  0
-0x4   0x80  SHL         0000  1  1   ← carry out!
-0x5   0xF0  HLT
+# ── Step 5: Gate-level simulation (tests everything together) ──
+IHP_PDK=~/IHP-Open-PDK make test_gl
+# ✅ expect: "RESULTS: 51 / 51 passed — ALL TESTS PASSED"
+
+# ── Step 6: Waveform viewer (tests GTKWave) ──
+make wave
+# ✅ expect: GTKWave window opens showing waveform signals
 ```
 
-### Conditional branching
+### Troubleshooting (Installation)
 
-```
-Addr  Hex   Assembly    Description
-----  ----  ---------   ---------------------------
-0x0   0x10  LDI 0       A=0, Z=1
-0x1   0xB4  JZ 4        Jump to 0x4 (Z is set)
-0x2   0x1F  LDI 15      (skipped)
-0x3   0xF0  HLT         (skipped)
-0x4   0x17  LDI 7       A=7, Z=0
-0x5   0x29  ADD 9       A=0 (overflow), C=1
-0x6   0xC9  JC 9        Jump to 0x9 (C is set)
-```
+| Step that Fails | Problem | Fix |
+|-----------------|---------|-----|
+| Step 1: `iverilog: command not found` | iverilog not installed | macOS: `brew install icarus-verilog` / Linux: `sudo apt install iverilog` |
+| Step 1: `yosys: command not found` | yosys not installed | macOS: `brew install yosys` / Linux: `sudo apt install yosys` |
+| Step 1: `ls: No such file or directory` | IHP PDK not cloned | `cd ~ && git clone --depth 1 https://github.com/IHP-GmbH/IHP-Open-PDK.git` |
+| Step 3: compile errors | Wrong iverilog version | Need iverilog with `-g2012` support (version 11+) |
+| Step 4: `Can't open liberty file` | IHP_PDK path wrong | Check path: `ls $IHP_PDK/ihp-sg13g2/libs.ref/sg13g2_stdcell/lib/` |
+| Step 5: `Unknown module type` | Missing cell models | Make sure `test/sg13g2_functional.v` exists in the repo |
+| Step 6: GTKWave doesn't open | GTKWave not installed | macOS: `brew install --cask gtkwave` / Linux: `sudo apt install gtkwave` |
 
 ---
 
-## Verilog Playground (Zero Install)
+## 6. Verilog Playground (Zero Install)
 
 Before installing anything locally, you can write and simulate Verilog **right in your browser**. These tools are perfect for warming up or if you're on a locked-down machine:
 
-| Tool | URL | What it does | Best for |
+| Tool | URL | What It Does | Best For |
 |------|-----|-------------|----------|
 | **EDA Playground** | [edaplayground.com](https://www.edaplayground.com/) | Write Verilog + testbench, simulate with Icarus Verilog, view waveforms | General simulation — our primary zero-install tool |
 | **HDLBits** | [hdlbits.01xz.net](https://hdlbits.01xz.net/) | 170+ interactive Verilog exercises with auto-grading | Learning Verilog step-by-step |
@@ -550,7 +374,7 @@ These 8 exercises cover every building block in our CPU:
 
 ---
 
-## TinyTapeout Web Design Flow
+## 7. TinyTapeout Web Design Flow
 
 TinyTapeout offers **two ways** to design your chip — both start in the browser:
 
@@ -573,223 +397,448 @@ TinyTapeout offers **two ways** to design your chip — both start in the browse
 
 ---
 
-## Tool Installation
-
-### macOS
-
-```bash
-# 1. Install Homebrew (if not already installed)
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-# 2. Install simulation tools
-brew install icarus-verilog        # Verilog simulator (iverilog)
-brew install --cask gtkwave        # Waveform viewer
-
-# 3. Install synthesis tool
-brew install yosys                 # RTL synthesis
-
-# 4. Install IHP PDK (standard cell library)
-cd ~
-git clone --depth 1 https://github.com/IHP-GmbH/IHP-Open-PDK.git
-
-# 5. Verify installation
-iverilog -V | head -1              # should print version
-yosys --version                    # should print version
-ls ~/IHP-Open-PDK/ihp-sg13g2/     # should list libs.ref, libs.tech, etc.
-
-# 6. (Optional) Install Python for cocotb testing
-brew install python3
-pip3 install cocotb
-
-# 7. (Optional) Docker for full OpenLane PnR flow
-# Install Docker Desktop from https://www.docker.com/products/docker-desktop/
-```
-
-### Windows (WSL2)
-
-Windows users should use WSL2 (Windows Subsystem for Linux). All tools run natively in WSL2.
-
-```powershell
-# Step 1: Install WSL2 (run in PowerShell as Administrator)
-wsl --install -d Ubuntu-22.04
-
-# Step 2: Restart your computer, then open "Ubuntu" from Start menu
-```
-
-Then inside the WSL2 Ubuntu terminal, follow the Linux instructions below.
-
-**Alternative: Without WSL2** (limited, simulation only)
-
-```powershell
-# Install via MSYS2 (https://www.msys2.org/)
-# After installing MSYS2, open MSYS2 MINGW64 terminal:
-pacman -S mingw-w64-x86_64-iverilog
-pacman -S mingw-w64-x86_64-yosys
-
-# Or use OSS CAD Suite (all-in-one):
-# Download from https://github.com/YosysHQ/oss-cad-suite-build/releases
-# Extract and add to PATH
-```
-
-### Linux (Ubuntu/Debian)
-
-```bash
-# 1. Install simulation tools
-sudo apt update
-sudo apt install -y iverilog gtkwave
-
-# 2. Install synthesis tool
-sudo apt install -y yosys
-
-# If the packaged yosys is too old, install from source or use OSS CAD Suite:
-# wget https://github.com/YosysHQ/oss-cad-suite-build/releases/download/2024-02-01/oss-cad-suite-linux-x64-20240201.tgz
-# tar xzf oss-cad-suite-linux-x64-*.tgz
-# export PATH="$PWD/oss-cad-suite/bin:$PATH"
-
-# 3. Install IHP PDK
-cd ~
-git clone --depth 1 https://github.com/IHP-GmbH/IHP-Open-PDK.git
-
-# 4. Verify
-iverilog -V | head -1
-yosys --version
-ls ~/IHP-Open-PDK/ihp-sg13g2/
-
-# 5. (Optional) Docker for full OpenLane PnR flow
-sudo apt install -y docker.io
-sudo usermod -aG docker $USER
-# Log out and back in for group change to take effect
-```
-
-### Code Editor (VS Code)
-
-A good editor makes writing Verilog much easier. VS Code with the Verilog extension gives you syntax highlighting, auto-complete, and live error checking.
-
-**Install VS Code:**
-
-Download from [code.visualstudio.com](https://code.visualstudio.com/) (macOS, Windows, Linux).
-
-**Install the Verilog extension:**
-
-```bash
-code --install-extension mshr-h.VerilogHDL
-```
-
-**Configure linting** (uses iverilog as backend — must be installed first):
-
-Open VS Code Settings (Ctrl+, or Cmd+,) and add:
-
-```json
-{
-    "verilog.linting.linter": "iverilog",
-    "verilog.linting.iverilog.arguments": "-g2012 -Wall"
-}
-```
-
-Now VS Code shows errors **as you type** — red squiggles on syntax errors, warnings on unused signals. This catches bugs before you even run the simulator.
-
-**Alternatives:** Sublime Text, Vim/Neovim (with verilog plugin), or just use [EDA Playground](https://www.edaplayground.com/) in the browser.
-
-### Docker (All Platforms)
-
-Docker gives you a **complete, pre-configured environment** for running the full OpenLane Place & Route flow. No manual tool installation needed — everything runs inside a container.
-
-**Step 1: Install Docker**
-
-| Platform | How to install |
-|----------|---------------|
-| **macOS** | Download [Docker Desktop](https://www.docker.com/products/docker-desktop/), install, and start it |
-| **Windows** | Download [Docker Desktop](https://www.docker.com/products/docker-desktop/), install (enable WSL2 backend), and start it |
-| **Linux** | `sudo apt install -y docker.io && sudo usermod -aG docker $USER` then log out and back in |
-
-**Step 2: Verify Docker is running**
-
-```bash
-docker --version
-docker run hello-world    # should print "Hello from Docker!"
-```
-
-**Step 3: Run the full OpenLane PnR flow**
-
-```bash
-# Pull the TinyTapeout IHP OpenLane image
-docker pull ghcr.io/tinytapeout/openlane2:latest
-
-# Clone the TinyTapeout IHP template
-git clone https://github.com/TinyTapeout/ttihp-verilog-template.git
-cd ttihp-verilog-template
-
-# Copy your design files into the template
-cp /path/to/Tinytapeout_4bitCPU/src/project.v src/
-cp /path/to/Tinytapeout_4bitCPU/src/cpu_core.v src/
-cp /path/to/Tinytapeout_4bitCPU/src/config.json src/
-cp /path/to/Tinytapeout_4bitCPU/info.yaml .
-
-# Run the full hardening flow (synthesis → place & route → GDS)
-docker run --rm -v $(pwd):/work -w /work \
-  ghcr.io/tinytapeout/openlane2:latest \
-  python -m openlane --run-tag run1 src/config.json
-```
-
-The output GDS file (your physical layout ready for fabrication) will be in `runs/run1/final/gds/`.
-
-### Which Setup Do I Need?
-
-| Goal | What to install | Platform |
-|------|----------------|----------|
-| **Just simulate** (RTL testbench only) | Icarus Verilog + GTKWave | macOS, Linux, Windows |
-| **Simulate + Synthesize** (see gate-level results) | + Yosys + IHP PDK | macOS, Linux, WSL2 |
-| **Full PnR flow locally** (generate GDS layout) | + Docker + OpenLane | macOS, Linux, Windows |
-| **Just submit to TinyTapeout** (let CI do the work) | Just git + GitHub account! | Any |
-
-> **Recommended for workshop:** Install iverilog + yosys + IHP PDK natively for fast iteration. Use Docker or GitHub CI for the final PnR/GDS step.
-
-### Post-Install Verification
-
-Run these steps **one by one** after installation. Each step tests a specific tool — if one fails, you know exactly what's broken:
-
-```bash
-# ── Step 1: Check tools are installed ──
-iverilog -V 2>&1 | head -1       # expect: "Icarus Verilog version 1x.x"
-yosys --version                   # expect: "Yosys 0.xx"
-ls ~/IHP-Open-PDK/ihp-sg13g2/    # expect: libs.ref  libs.tech  ...
-
-# ── Step 2: Clone the project ──
-git clone https://github.com/fidel-makatia/Tinytapeout_4bitCPU.git
-cd Tinytapeout_4bitCPU
-
-# ── Step 3: RTL simulation (tests iverilog) ──
-make test
-# ✅ expect: "RESULTS: 51 / 51 passed — ALL TESTS PASSED"
-
-# ── Step 4: Synthesis (tests yosys + IHP PDK) ──
-IHP_PDK=~/IHP-Open-PDK make synth
-# ✅ expect: "Number of cells: 194"
-
-# ── Step 5: Gate-level simulation (tests everything together) ──
-IHP_PDK=~/IHP-Open-PDK make test_gl
-# ✅ expect: "RESULTS: 51 / 51 passed — ALL TESTS PASSED"
-
-# ── Step 6: Waveform viewer (tests GTKWave) ──
-make wave
-# ✅ expect: GTKWave window opens showing waveform signals
-```
-
-**Troubleshooting:**
-
-| Step that fails | Problem | Fix |
-|-----------------|---------|-----|
-| Step 1: `iverilog: command not found` | iverilog not installed | macOS: `brew install icarus-verilog` / Linux: `sudo apt install iverilog` |
-| Step 1: `yosys: command not found` | yosys not installed | macOS: `brew install yosys` / Linux: `sudo apt install yosys` |
-| Step 1: `ls: No such file or directory` | IHP PDK not cloned | `cd ~ && git clone --depth 1 https://github.com/IHP-GmbH/IHP-Open-PDK.git` |
-| Step 3: compile errors | Wrong iverilog version | Need iverilog with `-g2012` support (version 11+) |
-| Step 4: `Can't open liberty file` | IHP_PDK path wrong | Check path: `ls $IHP_PDK/ihp-sg13g2/libs.ref/sg13g2_stdcell/lib/` |
-| Step 5: `Unknown module type` | Missing cell models | Make sure `test/sg13g2_functional.v` exists in the repo |
-| Step 6: GTKWave doesn't open | GTKWave not installed | macOS: `brew install --cask gtkwave` / Linux: `sudo apt install gtkwave` |
+# Part B — The Nibble CPU
 
 ---
 
-## Quick Start
+## 8. Architecture Overview
+
+Nibble is a **Harvard-architecture** accumulator machine:
+
+- **Data width:** 4 bits
+- **Instruction width:** 8 bits (`[7:4]` = opcode, `[3:0]` = immediate/address)
+- **Registers:** Accumulator (A), Program Counter (PC), Instruction Register (IR)
+- **Flags:** Carry (C), Zero (Z)
+- **Pipeline:** 2-cycle fetch-execute (1 instruction every 2 clock cycles)
+- **Memory:** External program memory via input pins (no internal ROM)
+- **I/O:** 4-bit input port, accumulator always visible on output
+
+---
+
+## 9. Block Diagram
+
+```
+                        TinyTapeout IHP Chip
+    ┌──────────────────────────────────────────────────────┐
+    │                                                      │
+    │  ui_in[7:0] ──────────┐                              │
+    │  (instruction)        │                              │
+    │                   ┌───▼───┐    ┌────────────┐        │
+    │                   │  IR   │───►│  OPCODE    │        │
+    │                   │ 8-bit │    │  DECODER   │        │
+    │                   └───────┘    └─────┬──────┘        │
+    │                                      │ control       │
+    │                       ┌──────────────┼──────────┐    │
+    │                       │              │          │    │
+    │                   ┌───▼───┐    ┌─────▼────┐    │    │
+    │  uio[7:4] ──────►│  MUX  │───►│   ALU    │    │    │
+    │  (input port)     │ 4-bit │    │  4-bit   │    │    │
+    │                   └───────┘    │ +,-,&,|  │    │    │
+    │                                │ ^,~,<<,>>│    │    │
+    │                   ┌────────┐   └──┬───┬───┘    │    │
+    │                   │  ACC   │◄─────┘   │        │    │
+    │                   │ 4-bit  │──────────┼──►uo_out[3:0]
+    │                   └────────┘     C,Z  │        │    │
+    │                                  flags│        │    │
+    │                   ┌────────┐   ┌──▼───▼──┐     │    │
+    │                   │   PC   │◄──┤ BRANCH  │     │    │
+    │                   │ 4-bit  │   │  LOGIC  │     │    │
+    │                   └───┬────┘   └─────────┘     │    │
+    │                       │                        │    │
+    │                       └──────────────────────►uio[3:0]
+    │                         (address bus)          │    │
+    │                                                │    │
+    │                   ┌────────┐                   │    │
+    │            clk───►│ FETCH/ │───────────────────┘    │
+    │          rst_n───►│EXECUTE │   uo_out[7] = phase    │
+    │                   │  FSM   │   uo_out[6] = halted   │
+    │                   └────────┘   uo_out[5] = zero     │
+    │                                uo_out[4] = carry    │
+    └──────────────────────────────────────────────────────┘
+```
+
+---
+
+## 10. Detailed Schematic
+
+Below is the gate-level breakdown of each CPU subsystem. After synthesis to IHP SG13G2, the CPU uses **194 standard cells** (20 flip-flops + 174 combinational gates).
+
+### 10.1 Register File (20 Flip-Flops)
+
+All state is held in D flip-flops with async active-low reset (`sg13g2_dfrbpq_1`):
+
+```
+                    ┌──────────────────────────────────────────────┐
+                    │            REGISTER FILE (20 DFFs)           │
+                    │                                              │
+    clk ───────────►│  ACC[3:0]    4 x DFF ──► uo_out[3:0]       │
+    rst_n ─────────►│  PC[3:0]     4 x DFF ──► uio_out[3:0]      │
+                    │  IR[7:0]     8 x DFF     (internal)         │
+                    │  carry       1 x DFF ──► uo_out[4]          │
+                    │  zero        1 x DFF ──► uo_out[5]          │
+                    │  halted      1 x DFF ──► uo_out[6]          │
+                    │  phase       1 x DFF ──► uo_out[7]          │
+                    │                                              │
+                    │  Total: 4+4+8+1+1+1+1 = 20 flip-flops      │
+                    └──────────────────────────────────────────────┘
+
+    Each DFF (sg13g2_dfrbpq_1):
+    ┌─────────┐
+    │  D    Q ├──► output
+    │         │
+    │ CLK    ─┤◄── clk
+    │ RST_B ─┤◄── rst_n (active low: Q=0 when RST_B=0)
+    └─────────┘
+```
+
+### 10.2 Instruction Decoder
+
+The opcode decoder splits the 8-bit instruction register and generates control signals:
+
+```
+    IR[7:0]
+    ┌────────────────────────┐
+    │ 7  6  5  4 │ 3  2  1  0│
+    │   OPCODE   │IMMEDIATE  │
+    └──────┬─────┴─────┬─────┘
+           │           │
+           ▼           ▼
+    ┌─────────────┐   imm[3:0] ──► ALU operand B
+    │   4-to-16   │              ──► Branch target
+    │   DECODER   │              ──► LDI value
+    │             │
+    │ (AND/NOR/   │
+    │  NAND gates)│
+    └──────┬──────┘
+           │
+           ▼ 16 control lines (active for each opcode)
+    ┌──────────────────────────────────────────────┐
+    │ is_NOP  is_LDI  is_ADD  is_SUB              │
+    │ is_AND  is_OR   is_XOR  is_NOT              │
+    │ is_SHL  is_SHR  is_JMP  is_JZ               │
+    │ is_JC   is_JNZ  is_IN   is_HLT              │
+    └──────────────────────────────────────────────┘
+
+    Example decode for opcode = 4'b0010 (ADD):
+    ┌─────┐
+    │ NOT ├◄── IR[7]  ──► IR[7]' = 1
+    └──┬──┘
+    ┌──▼──────────────────────┐
+    │       AND4              │
+    │  IR[7]' & IR[6]'       │──► is_ADD = 1
+    │  & IR[5] & IR[4]'      │
+    └─────────────────────────┘
+```
+
+### 10.3 ALU (Arithmetic Logic Unit)
+
+The ALU is **purely combinational** — it computes the result every cycle, but the result is only latched into ACC during the EXECUTE phase.
+
+```
+    ┌───────────────────────────────────────────────────┐
+    │                   4-BIT ALU                       │
+    │                                                   │
+    │   ACC[3:0] ──►┌──────┐                           │
+    │               │ 4-BIT│──► sum[3:0]  ──┐          │
+    │   imm[3:0] ──►│ ADDER│──► cout      ──┤          │
+    │               └──────┘                │          │
+    │                                       │          │
+    │   ACC[3:0] ──►┌──────┐               ┌▼────────┐│
+    │               │ 4-BIT│──► diff[3:0]──►│         ││
+    │   imm[3:0] ──►│SUBTR │──► bout     ──►│  RESULT ││
+    │               └──────┘               │   MUX   ││──► next_acc[3:0]
+    │                                      │         ││──► next_carry
+    │   ACC[3:0] ──►─── AND ──► and[3:0]──►│ (16:1)  ││──► next_zero
+    │   imm[3:0] ──►─── AND               │         ││
+    │                                      │ select: ││
+    │   ACC[3:0] ──►─── OR  ──► or[3:0] ──►│ opcode  ││
+    │   imm[3:0] ──►─── OR                │         ││
+    │                                      │         ││
+    │   ACC[3:0] ──►─── XOR ──► xor[3:0]──►│         ││
+    │   imm[3:0] ──►─── XOR               │         ││
+    │                                      │         ││
+    │   ACC[3:0] ──►─── NOT ──► not[3:0]──►│         ││
+    │                                      │         ││
+    │   ACC[3:0] ──►─── SHL ──► shl[3:0]──►│         ││
+    │              (shift left, MSB→carry) │         ││
+    │                                      │         ││
+    │   ACC[3:0] ──►─── SHR ──► shr[3:0]──►│         ││
+    │              (shift right, LSB→carry)│         ││
+    │                                      │         ││
+    │   port_in[3:0] ─────────► in[3:0] ──►│         ││
+    │                                      │         ││
+    │   imm[3:0] ─────────────► ldi[3:0]──►│         ││
+    │                                      └─────────┘│
+    │                                                   │
+    │   Zero detect: NOR(result[3], result[2],         │
+    │                    result[1], result[0]) ──► Z   │
+    └───────────────────────────────────────────────────┘
+
+    4-bit Adder Detail (ripple carry):
+    ┌──────┐  ┌──────┐  ┌──────┐  ┌──────┐
+    │  FA  │──│  FA  │──│  FA  │──│  FA  │──► Cout
+    │ [0]  │  │ [1]  │  │ [2]  │  │ [3]  │
+    └──┬───┘  └──┬───┘  └──┬───┘  └──┬───┘
+       ▼         ▼         ▼         ▼
+    sum[0]    sum[1]    sum[2]    sum[3]
+
+    Full Adder (FA) gate-level:
+         A ──┬──►XOR──┬──►XOR──► Sum
+         B ──┘        │    ▲
+                      │   Cin
+         A ──┬──►AND──┘
+         B ──┘        ├──►OR ──► Cout
+        Cin──┬──►AND──┘
+    (A^B)────┘
+```
+
+### 10.4 Branch Logic
+
+Determines whether to load PC from `imm[3:0]` (branch taken) or `PC+1` (sequential):
+
+```
+    ┌───────────────────────────────────────────┐
+    │             BRANCH LOGIC                  │
+    │                                           │
+    │   is_JMP ────────────────────►OR──┐       │
+    │                                   │       │
+    │   is_JZ  ──►AND──┐              │       │
+    │   zero ────►AND──┴──►OR─────────►OR──┐   │
+    │                                      │   │
+    │   is_JC  ──►AND──┐                  │   │
+    │   carry ───►AND──┴──►OR─────────────►OR──┤
+    │                                          │
+    │   is_JNZ ──►AND──┐                      │
+    │   ~zero ───►AND──┴──►OR─────────────────┤
+    │                                          │
+    │                              take_branch │
+    │                                          ▼
+    │   ┌─────────────┐          ┌───────────────┐
+    │   │   PC + 1    │──────────►│     MUX       │──► next_pc[3:0]
+    │   │ (4-bit incr)│          │  0: PC+1      │
+    │   └─────────────┘          │  1: imm[3:0]  │
+    │                            │  sel: branch  │
+    │   imm[3:0] ────────────────►│               │
+    │                            └───────────────┘
+    └───────────────────────────────────────────┘
+```
+
+### 10.5 Fetch-Execute FSM
+
+A single flip-flop (`phase`) controls the 2-cycle pipeline:
+
+```
+    ┌──────────────────────────────────────────────────────┐
+    │              FETCH-EXECUTE STATE MACHINE              │
+    │                                                      │
+    │   reset ──► phase = 0 (FETCH)                        │
+    │                                                      │
+    │   ┌─────────┐         ┌─────────────┐               │
+    │   │  FETCH  │────────►│  EXECUTE    │               │
+    │   │ phase=0 │         │  phase=1    │               │
+    │   │         │◄────────│             │               │
+    │   └─────────┘         └─────────────┘               │
+    │                                                      │
+    │   FETCH (phase=0):             EXECUTE (phase=1):    │
+    │    IR <= ui_in[7:0]            ACC   <= next_acc     │
+    │    phase <= 1                  PC    <= next_pc      │
+    │                                carry <= next_carry   │
+    │                                zero  <= next_zero    │
+    │                                halted<= next_halted  │
+    │                                phase <= 0            │
+    │                                                      │
+    │   HALT check: if halted=1, FSM stops                │
+    │   (clock keeps running, registers frozen)            │
+    └──────────────────────────────────────────────────────┘
+
+    Timing Diagram:
+    ─────────────────────────────────────────────────────────
+    clk     ╱╲__╱╲__╱╲__╱╲__╱╲__╱╲__╱╲__╱╲__╱╲__
+    phase   ___0____1____0____1____0____1____0____
+    action  FETCH EXEC  FETCH EXEC  FETCH EXEC
+             instr0      instr1      instr2
+    PC out   0          1          2
+    ACC      ----  res0  ---- res1  ---- res2
+    ─────────────────────────────────────────────────────────
+```
+
+### 10.6 Gate-Level Cell Usage (IHP SG13G2)
+
+```
+    Cell Type           Count    Function
+    ─────────────────────────────────────────────
+    sg13g2_dfrbpq_1       20    D flip-flop (async reset)
+    sg13g2_nor2_1         17    2-input NOR
+    sg13g2_o21ai_1        15    OR-AND-INV: ~((A|B)&C)
+    sg13g2_nand2_1        15    2-input NAND
+    sg13g2_a22oi_1        15    AND-OR-INV: ~((A&B)|(C&D))
+    sg13g2_nand3_1        14    3-input NAND
+    sg13g2_inv_1          14    Inverter
+    sg13g2_and2_1         10    2-input AND
+    sg13g2_a21oi_1        10    AND-OR-INV: ~((A&B)|C)
+    sg13g2_nor4_1          9    4-input NOR
+    sg13g2_nand2b_1        9    NAND with inverted input
+    sg13g2_mux2_1          8    2:1 Multiplexer
+    sg13g2_xnor2_1         6    2-input XNOR
+    sg13g2_nor3_1          6    3-input NOR
+    sg13g2_nand4_1         6    4-input NAND
+    sg13g2_a221oi_1        5    AND-AND-OR-INV
+    sg13g2_xor2_1          4    2-input XOR
+    sg13g2_nor2b_1         4    NOR with inverted input
+    sg13g2_nand3b_1        3    NAND with inverted input
+    sg13g2_or2_1           2    2-input OR
+    sg13g2_and4_1          1    4-input AND
+    sg13g2_and3_1          1    3-input AND
+    ─────────────────────────────────────────────
+    TOTAL                194    cells
+    Chip Area        2,677 um²  (15% of 1x1 tile)
+    Sequential          20      flip-flops (37% of area)
+    Combinational      174      logic gates
+```
+
+---
+
+## 11. Instruction Set
+
+```
+Opcode  Hex    Mnemonic    Operation                    Flags
+──────  ───    ────────    ─────────                    ─────
+0000    0x0    NOP         No operation                 -
+0001    0x1    LDI imm     A = imm                      Z
+0010    0x2    ADD imm     A = A + imm                  C, Z
+0011    0x3    SUB imm     A = A - imm                  C, Z
+0100    0x4    AND imm     A = A & imm                  Z
+0101    0x5    OR  imm     A = A | imm                  Z
+0110    0x6    XOR imm     A = A ^ imm                  Z
+0111    0x7    NOT         A = ~A                       Z
+1000    0x8    SHL         {C,A} = {A[3], A<<1}         C, Z
+1001    0x9    SHR         {A,C} = {A>>1, A[0]}         C, Z
+1010    0xA    JMP addr    PC = addr                    -
+1011    0xB    JZ  addr    if Z: PC = addr              -
+1100    0xC    JC  addr    if C: PC = addr              -
+1101    0xD    JNZ addr    if !Z: PC = addr             -
+1110    0xE    IN          A = input_port               Z
+1111    0xF    HLT         Halt CPU                     -
+```
+
+**Instruction encoding:** `[7:4]` = opcode, `[3:0]` = 4-bit immediate or jump address.
+
+**Flags:**
+- **C (Carry):** Set on ADD overflow, SUB borrow, SHL/SHR bit shifted out
+- **Z (Zero):** Set when result is `4'b0000`
+
+---
+
+## 12. TinyTapeout Pin Mapping
+
+```
+    ┌──────────────────────────────────────────────────┐
+    │              TinyTapeout IHP Tile                 │
+    │                                                  │
+    │  ACTIVE-LOW ACTIVE-  ACTIVE-                     │
+    │   RESET     HIGH     HIGH                        │
+    │  ┌─────┐  ┌─────┐  ┌─────┐                      │
+    │  │rst_n│  │ clk │  │ ena │                       │
+    │  └──┬──┘  └──┬──┘  └──┬──┘                       │
+    │     ▼        ▼        ▼                          │
+    ├──────────────────────────────────────────────────┤
+    │           ACTIVE ACTIVE                          │
+    │           ACTIVE ACTIVE                          │
+    │   ACTIVE  ┌─────────┐  ACTIVE  ┌─────────┐      │
+    │   ACTIVE  │ ui_in   │  ACTIVE  │ uo_out  │      │
+    │           │ [7:0]   │          │ [7:0]   │      │
+    │           └─────────┘          └─────────┘      │
+    │                                                  │
+    │           ┌─────────┐                            │
+    │           │  uio    │                            │
+    │           │ [7:0]   │                            │
+    │           └─────────┘                            │
+    └──────────────────────────────────────────────────┘
+```
+
+| Pin | Dir | Signal | Connect to |
+|-----|-----|--------|------------|
+| `ui_in[7]` | in | Instruction bit 7 (opcode MSB) | RP2040 / EEPROM data |
+| `ui_in[6]` | in | Instruction bit 6 | " |
+| `ui_in[5]` | in | Instruction bit 5 | " |
+| `ui_in[4]` | in | Instruction bit 4 (opcode LSB) | " |
+| `ui_in[3]` | in | Instruction bit 3 (imm MSB) | " |
+| `ui_in[2]` | in | Instruction bit 2 | " |
+| `ui_in[1]` | in | Instruction bit 1 | " |
+| `ui_in[0]` | in | Instruction bit 0 (imm LSB) | " |
+| `uo_out[3:0]` | out | **Accumulator** | LEDs (see your result!) |
+| `uo_out[4]` | out | Carry flag | LED |
+| `uo_out[5]` | out | Zero flag | LED |
+| `uo_out[6]` | out | Halted | LED |
+| `uo_out[7]` | out | Phase (0=fetch, 1=exec) | LED / scope |
+| `uio[3:0]` | out | **Program Counter** | RP2040 / EEPROM address |
+| `uio[7:4]` | in | Input port (for IN) | DIP switches / RP2040 |
+
+---
+
+## 13. Example Programs
+
+### Counter (counts 0-15 on LEDs, then halts)
+
+```
+Addr  Hex   Binary      Assembly    Description
+----  ----  ----------  ---------   -------------------------
+0x0   0x10  0001 0000   LDI 0       Load 0 into accumulator
+0x1   0x21  0010 0001   ADD 1       Add 1
+0x2   0xD1  1101 0001   JNZ 1       Loop back if not zero
+0x3   0xF0  1111 0000   HLT         Halt (A wrapped to 0)
+```
+
+### Fibonacci (0, 1, 1, 2, 3, 5, 8, 13)
+
+```
+Addr  Hex   Assembly    ACC after
+----  ----  ---------   ---------
+0x0   0x10  LDI 0       0
+0x1   0x21  ADD 1       1
+0x2   0x20  ADD 0       1
+0x3   0x21  ADD 1       2
+0x4   0x21  ADD 1       3
+0x5   0x22  ADD 2       5
+0x6   0x23  ADD 3       8
+0x7   0x25  ADD 5       13
+0x8   0xF0  HLT         (halted)
+```
+
+### Shift & Carry test
+
+```
+Addr  Hex   Assembly    ACC   C  Z
+----  ----  ---------   ----  -  -
+0x0   0x11  LDI 1       0001  0  0
+0x1   0x80  SHL         0010  0  0
+0x2   0x80  SHL         0100  0  0
+0x3   0x80  SHL         1000  0  0
+0x4   0x80  SHL         0000  1  1   ← carry out!
+0x5   0xF0  HLT
+```
+
+### Conditional branching
+
+```
+Addr  Hex   Assembly    Description
+----  ----  ---------   ---------------------------
+0x0   0x10  LDI 0       A=0, Z=1
+0x1   0xB4  JZ 4        Jump to 0x4 (Z is set)
+0x2   0x1F  LDI 15      (skipped)
+0x3   0xF0  HLT         (skipped)
+0x4   0x17  LDI 7       A=7, Z=0
+0x5   0x29  ADD 9       A=0 (overflow), C=1
+0x6   0xC9  JC 9        Jump to 0x9 (C is set)
+```
+
+---
+
+# Part C — Build, Simulate & Synthesize
+
+---
+
+## 14. Quick Start
 
 ```bash
 make test          # RTL simulation — 51/51 tests
@@ -806,7 +855,7 @@ export IHP_PDK=/path/to/IHP-Open-PDK
 
 ---
 
-## Workshop Guide
+## 15. Workshop Guide
 
 ### Session 1: Understanding the CPU (30 min)
 
@@ -841,7 +890,7 @@ export IHP_PDK=/path/to/IHP-Open-PDK
 
 ---
 
-## Synthesis Results
+## 16. Synthesis Results
 
 | Metric | Value |
 |--------|-------|
@@ -857,7 +906,11 @@ export IHP_PDK=/path/to/IHP-Open-PDK
 
 ---
 
-## Testing on the TinyTapeout PCB
+# Part D — Testing on Real Silicon
+
+---
+
+## 17. Testing on the TinyTapeout PCB
 
 Once your chip comes back from fabrication at IHP, it arrives mounted on a **TinyTapeout demo PCB**. This section explains exactly how to run your CPU on real silicon.
 
@@ -1183,7 +1236,7 @@ The RP2040 generates the clock for the ASIC. Adjusting the clock speed is key fo
 
 > **How to set clock speed:** The TT board generates the clock from the RP2040. Configure it in the TinyTapeout SDK, or set it manually via the RP2040 firmware using a PWM output. Default is typically 10 MHz — **slow it down for visual demos!**
 
-### Troubleshooting
+### Troubleshooting (PCB)
 
 | Symptom | Likely Cause | Fix |
 |---------|-------------|-----|
@@ -1198,7 +1251,11 @@ The RP2040 generates the clock for the ASIC. Adjusting the clock speed is key fo
 
 ---
 
-## Repository Structure
+# Part E — Reference
+
+---
+
+## 18. Repository Structure
 
 ```
 ├── src/
@@ -1223,6 +1280,6 @@ The RP2040 generates the clock for the ASIC. Adjusting the clock speed is key fo
 
 ---
 
-## License
+## 19. License
 
 This project is open source under the [Apache 2.0 License](https://www.apache.org/licenses/LICENSE-2.0).
