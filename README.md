@@ -1,5 +1,7 @@
 # Nibble — 4-bit CPU for TinyTapeout IHP
 
+[![Build & Test](https://github.com/fidel-makatia/Tinytapeout_4bitCPU/actions/workflows/test.yml/badge.svg)](https://github.com/fidel-makatia/Tinytapeout_4bitCPU/actions/workflows/test.yml)
+
 A minimal 4-bit accumulator CPU designed for fabrication on IHP SG13G2 130nm through [TinyTapeout](https://tinytapeout.com). Fits in a single tile (194 standard cells, 15% utilization). Fully verified at both RTL and gate-level.
 
 ---
