@@ -160,3 +160,17 @@ module sg13g2_o21ai_1 (Y, A1, A2, B1);
     input A1, A2, B1;
     assign Y = ~((A1 | A2) & B1);
 endmodule
+
+// OR3
+module sg13g2_or3_1 (X, A, B, C);
+    output X;
+    input A, B, C;
+    assign X = A | B | C;
+endmodule
+
+// A21O: X = (A1 & A2) | B1
+module sg13g2_a21o_1 (X, A1, A2, B1);
+    output X;
+    input A1, A2, B1;
+    assign X = (A1 & A2) | B1;
+endmodule
