@@ -42,7 +42,7 @@
 <div class="slides">
 
 <!-- ============================================================ -->
-<!-- TITLE -->
+<!-- 1. TITLE -->
 <!-- ============================================================ -->
 <section class="title-slide" data-background-gradient="linear-gradient(135deg, #0d1117, #161b22)">
   <h1>Nibble</h1>
@@ -56,44 +56,66 @@
 </section>
 
 <!-- ============================================================ -->
-<!-- AGENDA -->
+<!-- 2. UPDATED AGENDA -->
 <!-- ============================================================ -->
 <section>
   <h2>Workshop Agenda</h2>
   <div class="two-col">
     <div>
       <div class="box box-blue">
-        <h3>Part 1: Architecture</h3>
+        <h3>Part 1: Tool Setup &amp; Installation</h3>
         <ul>
-          <li>What is a CPU?</li>
-          <li>Nibble's ISA (16 instructions)</li>
-          <li>Block diagram walkthrough</li>
+          <li>Choose your setup path</li>
+          <li>Install simulation &amp; synthesis tools</li>
+          <li>Verify everything works</li>
         </ul>
       </div>
       <div class="box box-blue">
-        <h3>Part 2: RTL Design</h3>
+        <h3>Part 2: Digital IC Basics</h3>
         <ul>
-          <li>Verilog building blocks</li>
-          <li>Fetch-Execute pipeline</li>
-          <li>The ALU and registers</li>
+          <li>Logic gates &amp; truth tables</li>
+          <li>From gates to chips</li>
+          <li>Drag-and-drop design with Wokwi</li>
+        </ul>
+      </div>
+      <div class="box box-blue">
+        <h3>Part 3: Introduction to Verilog</h3>
+        <ul>
+          <li>Combinational vs sequential logic</li>
+          <li>Browser-based Verilog tools</li>
+          <li>Your first Verilog module</li>
         </ul>
       </div>
     </div>
     <div>
       <div class="box box-green">
-        <h3>Part 3: Simulation</h3>
+        <h3>Part 4: Testing</h3>
         <ul>
-          <li>Testbench + waveforms</li>
-          <li>Writing programs in binary</li>
-          <li>51 automated tests</li>
+          <li>Testbenches &amp; simulation</li>
+          <li>Waveform viewing (GTKWave)</li>
+          <li>The simulation flow</li>
         </ul>
       </div>
       <div class="box box-green">
-        <h3>Part 4: Silicon</h3>
+        <h3>Part 5: Digital Synthesis</h3>
         <ul>
-          <li>Synthesis to IHP cells</li>
+          <li>From code to gates (Yosys)</li>
+          <li>Standard cell libraries</li>
           <li>Gate-level verification</li>
-          <li>TinyTapeout submission</li>
+        </ul>
+      </div>
+      <div class="box box-green">
+        <h3>Part 6: The Nibble CPU</h3>
+        <ul>
+          <li>Architecture &amp; ISA</li>
+          <li>RTL design walkthrough</li>
+          <li>Hands-on challenges</li>
+        </ul>
+      </div>
+      <div class="box box-green">
+        <h3>Part 7: Testing on Real Silicon</h3>
+        <ul>
+          <li>TinyTapeout demo board &amp; PCB testing</li>
         </ul>
       </div>
     </div>
@@ -101,171 +123,414 @@
 </section>
 
 <!-- ============================================================ -->
-<!-- PART 1: ARCHITECTURE -->
+<!-- PART 1: TOOL SETUP & INSTALLATION -->
 <!-- ============================================================ -->
 <section class="section-slide">
   <h1>Part 1</h1>
-  <h2>CPU Architecture</h2>
+  <h2>Tool Setup &amp; Installation</h2>
 </section>
 
 <section>
-  <h2>What is a CPU?</h2>
-  <div class="two-col">
-    <div>
-      <p>A CPU is a machine that:</p>
-      <ol>
-        <li class="fragment"><span class="highlight-blue">FETCH</span> — reads an instruction from memory</li>
-        <li class="fragment"><span class="highlight-green">DECODE</span> — figures out what to do</li>
-        <li class="fragment"><span class="highlight-yellow">EXECUTE</span> — does the operation</li>
-        <li class="fragment"><span class="highlight-red">REPEAT</span> — moves to next instruction</li>
-      </ol>
-    </div>
-    <div class="fragment">
-      <div class="box">
-        <p class="small">Our CPU does this in <strong>2 clock cycles</strong>:</p>
-        <pre><code>Cycle 1: FETCH + DECODE
-Cycle 2: EXECUTE
-
-→ 500,000 instructions/sec @ 1 MHz</code></pre>
-      </div>
-    </div>
+  <h2>Which Setup Should I Use?</h2>
+  <table>
+    <tr><th>Goal</th><th>What to install</th><th>Platform</th></tr>
+    <tr>
+      <td><strong>Just simulate</strong><br><span class="tiny">(RTL testbench only)</span></td>
+      <td>Icarus Verilog + GTKWave</td>
+      <td>macOS, Linux, Windows</td>
+    </tr>
+    <tr>
+      <td><strong>Simulate + Synthesize</strong><br><span class="tiny">(see gate-level results)</span></td>
+      <td>+ Yosys + IHP PDK</td>
+      <td>macOS, Linux, WSL2</td>
+    </tr>
+    <tr>
+      <td><strong>Full PnR flow locally</strong><br><span class="tiny">(generate GDS layout)</span></td>
+      <td>+ Docker + OpenLane</td>
+      <td>macOS, Linux, Windows</td>
+    </tr>
+    <tr>
+      <td><strong>Just submit to TinyTapeout</strong><br><span class="tiny">(let CI do the work)</span></td>
+      <td>Just git + GitHub account!</td>
+      <td>Any</td>
+    </tr>
+  </table>
+  <div class="box small" style="margin-top: 12px;">
+    <p><strong>Recommended for workshop:</strong> Install iverilog + yosys + IHP PDK natively for fast iteration. Use Docker or GitHub CI for the final PnR/GDS step.</p>
   </div>
 </section>
 
 <section>
-  <h2>Why 4 Bits?</h2>
+  <h2>macOS Setup</h2>
+  <pre><code class="language-bash"># 1. Install Homebrew (if needed)
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# 2. Install simulation tools
+brew install icarus-verilog        # Verilog simulator
+brew install --cask gtkwave        # Waveform viewer
+
+# 3. Install synthesis tool
+brew install yosys                 # RTL synthesis
+
+# 4. Install IHP PDK (standard cell library)
+cd ~
+git clone --depth 1 https://github.com/IHP-GmbH/IHP-Open-PDK.git
+
+# 5. Verify
+iverilog -V | head -1
+yosys --version
+ls ~/IHP-Open-PDK/ihp-sg13g2/</code></pre>
+</section>
+
+<section>
+  <h2>Windows Setup (WSL2)</h2>
+  <pre><code class="language-powershell"># Step 1: Install WSL2 (PowerShell as Administrator)
+wsl --install -d Ubuntu-22.04
+
+# Step 2: Restart computer, open "Ubuntu" from Start menu</code></pre>
+  <p class="small">Then inside the WSL2 Ubuntu terminal:</p>
+  <pre><code class="language-bash"># Follow the Linux instructions (next slide)</code></pre>
+  <div class="box small" style="margin-top: 12px;">
+    <p><strong>Alternative (no WSL2):</strong> Install MSYS2 from <a href="https://www.msys2.org/">msys2.org</a></p>
+    <pre><code class="language-bash">pacman -S mingw-w64-x86_64-iverilog
+pacman -S mingw-w64-x86_64-yosys</code></pre>
+    <p>Or download the all-in-one <a href="https://github.com/YosysHQ/oss-cad-suite-build/releases">OSS CAD Suite</a></p>
+  </div>
+</section>
+
+<section>
+  <h2>Linux (Ubuntu/Debian) Setup</h2>
+  <pre><code class="language-bash"># 1. Install simulation tools
+sudo apt update
+sudo apt install -y iverilog gtkwave
+
+# 2. Install synthesis tool
+sudo apt install -y yosys
+
+# (If yosys is too old, use OSS CAD Suite instead)
+
+# 3. Install IHP PDK
+cd ~
+git clone --depth 1 https://github.com/IHP-GmbH/IHP-Open-PDK.git
+
+# 4. Verify everything works
+iverilog -V | head -1
+yosys --version
+ls ~/IHP-Open-PDK/ihp-sg13g2/</code></pre>
+</section>
+
+<section>
+  <h2>Code Editor Setup</h2>
   <div class="two-col">
     <div>
-      <ul>
-        <li>Small enough to <strong>fully understand</strong></li>
-        <li>Can count <span class="highlight-blue">0 to 15</span></li>
-        <li>Only <span class="highlight-green">194 standard cells</span></li>
-        <li>Fits in <span class="highlight-yellow">15%</span> of a TinyTapeout tile</li>
-        <li>Same principles as a real 64-bit CPU!</li>
-      </ul>
-    </div>
-    <div>
-      <div class="box">
-        <p class="small"><strong>The constraint:</strong></p>
-        <ul class="small">
-          <li>TinyTapeout tile: 167 x 108 um</li>
-          <li>Max ~1000 standard cells</li>
-          <li>IHP SG13G2 130nm PDK</li>
-          <li>8 inputs, 8 outputs, 8 bidirectional</li>
+      <div class="box box-blue">
+        <h3>VS Code (Recommended)</h3>
+        <pre><code class="language-bash" style="font-size: 0.75em;"># Install VS Code:
+# https://code.visualstudio.com/
+
+# Install Verilog extension:
+code --install-extension mshr-h.VerilogHDL</code></pre>
+        <p class="small">Gives you:</p>
+        <ul class="tiny">
+          <li>Syntax highlighting for .v files</li>
+          <li>Auto-complete for Verilog keywords</li>
+          <li>Live linting (uses iverilog as backend)</li>
+          <li>Snippets for module, always, etc.</li>
         </ul>
       </div>
     </div>
+    <div>
+      <div class="box box-green">
+        <h3>Configure Linting</h3>
+        <p class="small">In VS Code settings (Ctrl+,):</p>
+        <pre><code class="language-json" style="font-size: 0.75em;">{
+  "verilog.linting.linter": "iverilog",
+  "verilog.linting.iverilog.arguments":
+    "-g2012 -Wall"
+}</code></pre>
+        <p class="small">Now VS Code shows errors <strong>as you type</strong> — red squiggles on syntax errors, warnings on unused signals.</p>
+      </div>
+      <div class="box small" style="margin-top: 8px;">
+        <p><strong>Alternatives:</strong> Sublime Text, Vim/Neovim (with verilog plugin), or just use EDA Playground in the browser.</p>
+      </div>
+    </div>
   </div>
 </section>
 
 <section>
-  <h2>Architecture at a Glance</h2>
-  <div class="box">
-    <table>
-      <tr><th>Feature</th><th>Nibble CPU</th></tr>
-      <tr><td>Architecture</td><td>Harvard (separate code &amp; data)</td></tr>
-      <tr><td>Data width</td><td>4 bits</td></tr>
-      <tr><td>Instruction width</td><td>8 bits (4 opcode + 4 immediate)</td></tr>
-      <tr><td>Registers</td><td>Accumulator (A), Program Counter (PC), Instruction Register (IR)</td></tr>
-      <tr><td>Flags</td><td>Carry (C), Zero (Z)</td></tr>
-      <tr><td>Instructions</td><td>16 (see ISA table)</td></tr>
-      <tr><td>Address space</td><td>16 locations (4-bit PC)</td></tr>
-      <tr><td>Pipeline</td><td>2-cycle fetch-execute</td></tr>
-    </table>
-  </div>
-</section>
-
-<section>
-  <h2>Block Diagram</h2>
-  <pre><code class="language-plaintext" style="font-size: 0.85em;">                    TinyTapeout IHP Chip
-  ┌──────────────────────────────────────────────────────┐
-  │  ui_in[7:0] ──────────┐                              │
-  │  (instruction)        │                              │
-  │                   ┌───▼───┐    ┌────────────┐        │
-  │                   │  IR   │───►│  OPCODE    │        │
-  │                   │ 8-bit │    │  DECODER   │        │
-  │                   └───────┘    └─────┬──────┘        │
-  │                                      │ control       │
-  │                   ┌───────┐    ┌─────▼────┐          │
-  │  uio[7:4] ──────►│  MUX  │───►│   ALU    │          │
-  │  (input port)     │ 4-bit │    │  4-bit   │          │
-  │                   └───────┘    └──┬───┬───┘          │
-  │                   ┌────────┐      │   │              │
-  │                   │  ACC   │◄─────┘   │flags         │
-  │                   │ 4-bit  │──────────┼──► uo_out    │
-  │                   └────────┘     ┌────▼────┐         │
-  │                   ┌────────┐     │ BRANCH  │         │
-  │                   │   PC   │◄────┤  LOGIC  │         │
-  │                   │ 4-bit  │     └─────────┘         │
-  │                   └───┬────┘                         │
-  │                       └──────────────────► uio[3:0]  │
-  └──────────────────────────────────────────────────────┘</code></pre>
-</section>
-
-<!-- ============================================================ -->
-<!-- INSTRUCTION SET -->
-<!-- ============================================================ -->
-<section>
-  <h2>Instruction Set Architecture</h2>
-  <p class="small">8-bit instruction: <code>[7:4] = opcode</code>, <code>[3:0] = immediate/address</code></p>
-  <table style="font-size: 0.55em;">
-    <tr><th>Opcode</th><th>Hex</th><th>Mnemonic</th><th>Operation</th><th>Flags</th></tr>
-    <tr><td>0000</td><td>0x0</td><td>NOP</td><td>No operation</td><td>—</td></tr>
-    <tr><td>0001</td><td>0x1</td><td>LDI imm</td><td>A = imm</td><td>Z</td></tr>
-    <tr><td>0010</td><td>0x2</td><td>ADD imm</td><td>A = A + imm</td><td>C, Z</td></tr>
-    <tr><td>0011</td><td>0x3</td><td>SUB imm</td><td>A = A - imm</td><td>C, Z</td></tr>
-    <tr><td>0100</td><td>0x4</td><td>AND imm</td><td>A = A &amp; imm</td><td>Z</td></tr>
-    <tr><td>0101</td><td>0x5</td><td>OR imm</td><td>A = A | imm</td><td>Z</td></tr>
-    <tr><td>0110</td><td>0x6</td><td>XOR imm</td><td>A = A ^ imm</td><td>Z</td></tr>
-    <tr><td>0111</td><td>0x7</td><td>NOT</td><td>A = ~A</td><td>Z</td></tr>
-    <tr><td>1000</td><td>0x8</td><td>SHL</td><td>{C,A} = {A[3], A&lt;&lt;1}</td><td>C, Z</td></tr>
-    <tr><td>1001</td><td>0x9</td><td>SHR</td><td>{A,C} = {A&gt;&gt;1, A[0]}</td><td>C, Z</td></tr>
-    <tr><td>1010</td><td>0xA</td><td>JMP addr</td><td>PC = addr</td><td>—</td></tr>
-    <tr><td>1011</td><td>0xB</td><td>JZ addr</td><td>if Z: PC = addr</td><td>—</td></tr>
-    <tr><td>1100</td><td>0xC</td><td>JC addr</td><td>if C: PC = addr</td><td>—</td></tr>
-    <tr><td>1101</td><td>0xD</td><td>JNZ addr</td><td>if !Z: PC = addr</td><td>—</td></tr>
-    <tr><td>1110</td><td>0xE</td><td>IN</td><td>A = input_port</td><td>Z</td></tr>
-    <tr><td>1111</td><td>0xF</td><td>HLT</td><td>Halt CPU</td><td>—</td></tr>
-  </table>
-</section>
-
-<section>
-  <h2>Instruction Encoding</h2>
+  <h2>Docker Setup (All Platforms)</h2>
+  <p class="small">Docker gives you a <strong>complete, pre-configured environment</strong> — no manual installs needed. This is the recommended option if you want to run the full OpenLane Place &amp; Route flow.</p>
   <div class="two-col">
     <div>
-      <pre><code class="language-plaintext">  8-bit instruction word
-  ┌────────────────────────┐
-  │ 7  6  5  4 │ 3  2  1  0│
-  │   OPCODE   │ IMMEDIATE │
-  └────────────┴───────────┘
+      <div class="box box-blue">
+        <h3>1. Install Docker</h3>
+        <pre><code class="language-bash"># macOS / Windows:
+# Download Docker Desktop from:
+# https://www.docker.com/products/docker-desktop/
+# Install and start it.
 
-  Example: ADD 5
-  Opcode = 0010 (ADD)
-  Imm    = 0101 (5)
+# Linux (Ubuntu/Debian):
+sudo apt update
+sudo apt install -y docker.io
+sudo usermod -aG docker $USER
+# Log out and log back in</code></pre>
+      </div>
+    </div>
+    <div>
+      <div class="box box-green">
+        <h3>2. Verify Docker</h3>
+        <pre><code class="language-bash"># Check Docker is running:
+docker --version
+docker run hello-world
 
-  Binary: 0010 0101
-  Hex:    0x25</code></pre>
+# Should print:
+# "Hello from Docker!"</code></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Docker: Run OpenLane PnR</h2>
+  <p class="small">The full Place &amp; Route flow runs inside a Docker container. This is what TinyTapeout's GitHub CI does — you can also run it locally.</p>
+  <pre><code class="language-bash"># Pull the TinyTapeout IHP OpenLane image
+docker pull ghcr.io/tinytapeout/openlane2:latest
+
+# Clone the TinyTapeout IHP template
+git clone https://github.com/TinyTapeout/ttihp-verilog-template.git
+cd ttihp-verilog-template
+
+# Copy your design files into the template
+cp /path/to/Tinytapeout_4bitCPU/src/project.v src/
+cp /path/to/Tinytapeout_4bitCPU/src/cpu_core.v src/
+cp /path/to/Tinytapeout_4bitCPU/src/config.json src/
+cp /path/to/Tinytapeout_4bitCPU/info.yaml .
+
+# Run the full hardening flow (synthesis -> PnR -> GDS)
+docker run --rm -v $(pwd):/work -w /work \
+  ghcr.io/tinytapeout/openlane2:latest \
+  python -m openlane --run-tag run1 src/config.json</code></pre>
+  <div class="box small">
+    <p><strong>Output:</strong> <code>runs/run1/final/gds/</code> — your physical layout file ready for fabrication!</p>
+    <p>Docker works identically on <span class="highlight-blue">macOS</span>, <span class="highlight-green">Linux</span>, and <span class="highlight-yellow">Windows</span>.</p>
+  </div>
+</section>
+
+<section>
+  <h2>Verify Your Setup</h2>
+  <p class="small">Run these commands <strong>one by one</strong>. Each one tests a specific tool:</p>
+  <pre><code class="language-bash" style="font-size: 0.52em;"># -- Step 1: Check tools are installed --
+iverilog -V 2>&1 | head -1       # expect: "Icarus Verilog version 1x.x"
+yosys --version                   # expect: "Yosys 0.xx"
+ls ~/IHP-Open-PDK/ihp-sg13g2/    # expect: libs.ref  libs.tech  ...
+
+# -- Step 2: Clone the project --
+git clone https://github.com/fidel-makatia/Tinytapeout_4bitCPU.git
+cd Tinytapeout_4bitCPU
+
+# -- Step 3: RTL simulation (tests iverilog) --
+make test                         # expect: "51 / 51 passed -- ALL TESTS PASSED"
+
+# -- Step 4: Synthesis (tests yosys + IHP PDK) --
+IHP_PDK=~/IHP-Open-PDK make synth  # expect: "Number of cells: 194"
+
+# -- Step 5: Gate-level simulation (tests everything together) --
+IHP_PDK=~/IHP-Open-PDK make test_gl  # expect: "51 / 51 passed -- ALL TESTS PASSED"
+
+# -- Step 6: Waveform viewer (tests GTKWave) --
+make test                         # generates tb.vcd
+make wave                         # should open GTKWave window</code></pre>
+  <div class="box box-green small">
+    <p><strong>All 6 steps pass?</strong> You're ready for the workshop!</p>
+    <p><strong>Step 3 fails?</strong> iverilog not installed. &nbsp; <strong>Step 4 fails?</strong> yosys or IHP PDK path wrong. &nbsp; <strong>Step 5 fails?</strong> Check IHP_PDK path.</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- PART 2: DIGITAL IC BASICS -->
+<!-- ============================================================ -->
+<section class="section-slide">
+  <h1>Part 2</h1>
+  <h2>Digital IC Basics &amp; Drag-and-Drop Design</h2>
+</section>
+
+<!-- NEW SLIDE: What is a Digital IC? -->
+<section>
+  <h2>What is a Digital IC?</h2>
+  <div class="two-col">
+    <div>
+      <p>A <strong>digital integrated circuit</strong> (IC) is a chip made of tiny switches called <span class="highlight-blue">transistors</span>.</p>
+      <div class="box box-blue">
+        <h3>The Basic Logic Gates</h3>
+        <table style="font-size: 0.5em;">
+          <tr><th>Gate</th><th>Symbol</th><th>What it does</th></tr>
+          <tr><td>AND</td><td>A &amp; B</td><td>Output 1 only if BOTH inputs are 1</td></tr>
+          <tr><td>OR</td><td>A | B</td><td>Output 1 if ANY input is 1</td></tr>
+          <tr><td>NOT</td><td>~A</td><td>Flips the input (0 becomes 1)</td></tr>
+          <tr><td>XOR</td><td>A ^ B</td><td>Output 1 if inputs DIFFER</td></tr>
+        </table>
+      </div>
+    </div>
+    <div>
+      <div class="box box-green">
+        <h3>AND Gate Truth Table</h3>
+        <table style="font-size: 0.55em;">
+          <tr><th>A</th><th>B</th><th>A AND B</th></tr>
+          <tr><td>0</td><td>0</td><td>0</td></tr>
+          <tr><td>0</td><td>1</td><td>0</td></tr>
+          <tr><td>1</td><td>0</td><td>0</td></tr>
+          <tr><td>1</td><td>1</td><td class="highlight-green">1</td></tr>
+        </table>
+      </div>
+      <div class="box small" style="margin-top: 8px;">
+        <p><strong>From transistors to gates:</strong> A NAND gate needs only 4 transistors. Everything in a computer — from adders to CPUs — is built from combinations of these simple gates.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- NEW SLIDE: From Gates to Chips -->
+<section>
+  <h2>From Gates to Chips</h2>
+  <pre><code class="language-plaintext" style="font-size: 0.8em;">  The Hierarchy of Digital Design:
+
+  Transistors      Gates          Modules          Chip
+  ┌──┐  ┌──┐     ┌──────┐      ┌──────────┐    ┌──────────────┐
+  │P │  │N │ --> │ NAND │ -->  │  Adder   │ -> │   CPU Core   │
+  └──┘  └──┘     │ AND  │      │  Counter │    │   + I/O      │
+   4 transistors  │ OR   │      │  MUX     │    │   + Memory   │
+   = 1 gate       │ NOT  │      │  Decoder │    │              │
+                  └──────┘      └──────────┘    └──────────────┘
+
+  Standard Cell Libraries:
+  - Pre-designed, pre-characterized gates
+  - Each cell has a known area, delay, and power
+  - AND + OR + NOT can build ANYTHING (functionally complete)
+  - IHP SG13G2 library has ~84 standard cells
+  - Our Nibble CPU uses just 22 of them!</code></pre>
+  <div class="box small">
+    <p>The synthesis tool (Yosys) takes your high-level design and maps it down to these standard cells — like assembling LEGO bricks from a catalog.</p>
+  </div>
+</section>
+
+<section>
+  <h2>TinyTapeout: Web-Based Design Flow</h2>
+  <p class="small">TinyTapeout offers <strong>two ways</strong> to design your chip — both start in the browser:</p>
+  <div class="two-col">
+    <div>
+      <div class="box box-blue">
+        <h3>Option A: Wokwi (Visual)</h3>
+        <ul class="small">
+          <li>Drag-and-drop logic gates</li>
+          <li>No code — build circuits visually</li>
+          <li>Simulate in the browser</li>
+          <li>Auto-generates netlist for tapeout</li>
+          <li>Great for beginners!</li>
+        </ul>
+        <p class="tiny" style="margin-top:6px;"><a href="https://tinytapeout.com/digital_design/wokwi/">tinytapeout.com/digital_design/wokwi</a></p>
+      </div>
+    </div>
+    <div>
+      <div class="box box-green">
+        <h3>Option B: Verilog (Code)</h3>
+        <ul class="small">
+          <li>Fork the GitHub template</li>
+          <li>Write Verilog (even in GitHub's web editor!)</li>
+          <li>Push -> GitHub Actions runs OpenLane</li>
+          <li>Automated synthesis, PnR, GDS</li>
+          <li>Full control, real HDL skills</li>
+        </ul>
+        <p class="tiny" style="margin-top:6px;"><a href="https://tinytapeout.com/digital_design/">tinytapeout.com/digital_design</a></p>
+      </div>
+    </div>
+  </div>
+  <div class="box small" style="margin-top: 8px;">
+    <p><strong>Our workshop uses Option B</strong> (Verilog). But if a participant has never written code before, start them on Option A with Wokwi — they can build a simple gate circuit and see it taped out!</p>
+  </div>
+</section>
+
+<section>
+  <h2>Wokwi: Build a Circuit Visually</h2>
+  <div class="two-col">
+    <div>
+      <pre><code class="language-plaintext" style="font-size: 0.7em;">  Wokwi Editor (in browser):
+  +----------------------------+
+  |  [Gates] [Wires] [Sim]    |
+  |                            |
+  |   +---+                   |
+  | --+AND+--+                |
+  | --+   |  |  +---+        |
+  |   +---+  +--+OR +-- OUT  |
+  |   +---+  +--+   |        |
+  | --+AND+--+  +---+        |
+  | --+   |                   |
+  |   +---+                   |
+  |                            |
+  |  [> Simulate]  [Export]   |
+  +----------------------------+</code></pre>
     </div>
     <div>
       <div class="box">
-        <p><strong>Encode these:</strong></p>
+        <p class="small"><strong>Try it:</strong></p>
         <ol class="small">
-          <li>LDI 7 → <span class="fragment highlight-green">0001 0111 = 0x17</span></li>
-          <li>SUB 3 → <span class="fragment highlight-green">0011 0011 = 0x33</span></li>
-          <li>JMP 0 → <span class="fragment highlight-green">1010 0000 = 0xA0</span></li>
-          <li>HLT   → <span class="fragment highlight-green">1111 0000 = 0xF0</span></li>
+          <li>Go to <a href="https://wokwi.com/">wokwi.com</a></li>
+          <li>Create a new project -> "Logic Gates"</li>
+          <li>Drag AND, OR, NOT gates onto the canvas</li>
+          <li>Connect wires between them</li>
+          <li>Click <strong>Simulate</strong> to test</li>
+          <li>Toggle inputs, watch outputs change</li>
         </ol>
+        <p class="small" style="margin-top: 12px;">For TinyTapeout, use their Wokwi template:<br>
+        <a href="https://tinytapeout.com/digital_design/wokwi/" class="tiny">tinytapeout.com/digital_design/wokwi</a></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- NEW SLIDE: What is TinyTapeout? -->
+<section>
+  <h2>What is TinyTapeout?</h2>
+  <div class="two-col">
+    <div>
+      <div class="box box-blue">
+        <h3>The Concept</h3>
+        <p class="small">TinyTapeout lets you design a digital chip and get it <strong>fabricated on real silicon</strong> for a fraction of the cost of a full chip run. Your design shares a die with hundreds of others.</p>
+      </div>
+      <div class="box box-green">
+        <h3>The Constraints</h3>
+        <table style="font-size: 0.55em;">
+          <tr><th>Parameter</th><th>Value</th></tr>
+          <tr><td>Tile size</td><td>167 x 108 um</td></tr>
+          <tr><td>Max cells</td><td>~1000 standard cells</td></tr>
+          <tr><td>Process</td><td>IHP SG13G2 130nm PDK</td></tr>
+          <tr><td>Input pins</td><td>8 (ui_in)</td></tr>
+          <tr><td>Output pins</td><td>8 (uo_out)</td></tr>
+          <tr><td>Bidirectional pins</td><td>8 (uio)</td></tr>
+        </table>
+      </div>
+    </div>
+    <div>
+      <div class="box">
+        <h3>The Flow</h3>
+        <ol class="small">
+          <li>Design in <strong>Wokwi</strong> (visual) or <strong>Verilog</strong> (code)</li>
+          <li>Push to GitHub — CI runs OpenLane automatically</li>
+          <li>Submit at <a href="https://app.tinytapeout.com">app.tinytapeout.com</a></li>
+          <li>Wait for IHP to fabricate the chip</li>
+          <li>Receive your chip on a demo PCB!</li>
+        </ol>
+        <p class="tiny" style="margin-top: 8px;">Our Nibble CPU uses only <strong>194 cells</strong> (~15% of a tile) — there is plenty of room to add features!</p>
       </div>
     </div>
   </div>
 </section>
 
 <!-- ============================================================ -->
-<!-- PART 2: RTL DESIGN -->
+<!-- PART 3: INTRODUCTION TO VERILOG -->
 <!-- ============================================================ -->
 <section class="section-slide">
-  <h1>Part 2</h1>
-  <h2>RTL Design in Verilog</h2>
+  <h1>Part 3</h1>
+  <h2>Introduction to Verilog</h2>
 </section>
 
 <section>
@@ -309,604 +574,6 @@ always @(posedge clk)
 </section>
 
 <section>
-  <h2>Register File: 20 Flip-Flops</h2>
-  <p class="small">All CPU state is stored in D flip-flops with async active-low reset</p>
-  <pre><code class="language-plaintext">  ┌──────────────────────────────────────────────┐
-  │            REGISTER FILE (20 DFFs)           │
-  │                                              │
-  │  ACC[3:0]    4 x DFF ──► uo_out[3:0]       │
-  │  PC[3:0]     4 x DFF ──► uio_out[3:0]      │
-  │  IR[7:0]     8 x DFF     (internal)         │
-  │  carry       1 x DFF ──► uo_out[4]          │
-  │  zero        1 x DFF ──► uo_out[5]          │
-  │  halted      1 x DFF ──► uo_out[6]          │
-  │  phase       1 x DFF ──► uo_out[7]          │
-  │                                              │
-  │  Total: 4+4+8+1+1+1+1 = 20 flip-flops      │
-  └──────────────────────────────────────────────┘
-
-  Each DFF: ┌─────────┐
-            │  D    Q ├──► output
-            │ CLK    ─┤◄── clk
-            │ RST_B ─┤◄── rst_n (Q=0 when RST_B=0)
-            └─────────┘</code></pre>
-</section>
-
-<section>
-  <h2>Fetch-Execute FSM</h2>
-  <div class="two-col">
-    <div>
-      <pre><code class="language-plaintext">  ┌─────────┐       ┌─────────────┐
-  │  FETCH  │──────►│  EXECUTE    │
-  │ phase=0 │       │  phase=1    │
-  │         │◄──────│             │
-  └─────────┘       └─────────────┘
-
-  FETCH (phase=0):
-   IR <= ui_in[7:0]
-   phase <= 1
-
-  EXECUTE (phase=1):
-   ACC   <= ALU result
-   PC    <= next_pc
-   carry <= next_carry
-   zero  <= next_zero
-   phase <= 0</code></pre>
-    </div>
-    <div>
-      <pre><code class="language-plaintext">Timing Diagram:
-
-clk   ╱╲__╱╲__╱╲__╱╲__╱╲__╱╲__
-phase __0____1____0____1____0__
-action FETCH EXEC  FETCH EXEC
-        instr0      instr1
-PC out  0           1
-ACC     ----  res0  ---- res1</code></pre>
-      <div class="box small">
-        <p>Only <strong>1 flip-flop</strong> controls the entire pipeline!</p>
-        <p><code>phase = 0</code> → Fetch<br><code>phase = 1</code> → Execute</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section>
-  <h2>The ALU</h2>
-  <pre><code class="language-plaintext">  ┌─────────────────────────────────────────────┐
-  │                  4-BIT ALU                   │
-  │                                              │
-  │  ACC[3:0] ──►┌──────┐                       │
-  │              │ ADDER│──► sum[3:0]  ──┐      │
-  │  imm[3:0] ──►│      │──► cout      ──┤      │
-  │              └──────┘                │      │
-  │  ACC ──► AND ──► and[3:0] ──────────┤      │
-  │  imm ──► AND                        │      │
-  │                                ┌────▼────┐ │
-  │  ACC ──► OR  ──► or[3:0]  ───►│ RESULT  │ │
-  │  ACC ──► XOR ──► xor[3:0] ───►│  MUX    │─► next_acc
-  │  ACC ──► NOT ──► not[3:0] ───►│(opcode) │─► next_carry
-  │  ACC ──► SHL ──► shl[3:0] ───►│         │─► next_zero
-  │  ACC ──► SHR ──► shr[3:0] ───►│         │ │
-  │  port_in ─────► in[3:0]  ───►│         │ │
-  │  imm ─────────► ldi[3:0] ───►│         │ │
-  │                                └─────────┘ │
-  │  Zero detect: NOR(result[3:0]) ──► Z       │
-  └─────────────────────────────────────────────┘</code></pre>
-</section>
-
-<section>
-  <h2>Full Adder — Gate Level</h2>
-  <div class="two-col">
-    <div>
-      <pre><code class="language-plaintext">  Full Adder (1-bit):
-
-  A ──┬──►XOR──┬──►XOR──► Sum
-  B ──┘        │    ▲
-               │   Cin
-  A ──┬──►AND──┘
-  B ──┘        ├──►OR ──► Cout
-  Cin─┬──►AND──┘
-  A^B─┘
-
-  4-bit Ripple Carry Adder:
-
-  ┌────┐  ┌────┐  ┌────┐  ┌────┐
-  │ FA │──│ FA │──│ FA │──│ FA │─►Cout
-  │[0] │  │[1] │  │[2] │  │[3] │
-  └──┬─┘  └──┬─┘  └──┬─┘  └──┬─┘
-     ▼       ▼       ▼       ▼
-  sum[0]  sum[1]  sum[2]  sum[3]</code></pre>
-    </div>
-    <div>
-      <div class="box">
-        <h3>Truth Table</h3>
-        <table style="font-size: 0.55em;">
-          <tr><th>A</th><th>B</th><th>Cin</th><th>Sum</th><th>Cout</th></tr>
-          <tr><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
-          <tr><td>0</td><td>0</td><td>1</td><td>1</td><td>0</td></tr>
-          <tr><td>0</td><td>1</td><td>0</td><td>1</td><td>0</td></tr>
-          <tr><td>0</td><td>1</td><td>1</td><td>0</td><td>1</td></tr>
-          <tr><td>1</td><td>0</td><td>0</td><td>1</td><td>0</td></tr>
-          <tr><td>1</td><td>0</td><td>1</td><td>0</td><td>1</td></tr>
-          <tr><td>1</td><td>1</td><td>0</td><td>0</td><td>1</td></tr>
-          <tr><td>1</td><td>1</td><td>1</td><td>1</td><td>1</td></tr>
-        </table>
-        <p class="tiny" style="margin-top:8px;">Sum = A XOR B XOR Cin<br>Cout = (A AND B) OR (Cin AND (A XOR B))</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section>
-  <h2>Branch Logic</h2>
-  <pre><code class="language-plaintext">  ┌───────────────────────────────────────────┐
-  │             BRANCH LOGIC                  │
-  │                                           │
-  │   is_JMP ────────────────────►OR──┐       │
-  │                                   │       │
-  │   is_JZ  ──►AND──┐              │       │
-  │   zero ────►AND──┴───────────────►OR──┐   │
-  │                                       │   │
-  │   is_JC  ──►AND──┐                  │   │
-  │   carry ───►AND──┴───────────────────►OR──┤
-  │                                           │
-  │   is_JNZ ──►AND──┐                      │
-  │   ~zero ───►AND──┴───────────────────────┤
-  │                               take_branch │
-  │                                           ▼
-  │   ┌───────────┐            ┌──────────────┐
-  │   │  PC + 1   │───────────►│    MUX       │──► next_pc
-  │   └───────────┘            │ 0: PC+1      │
-  │                            │ 1: imm[3:0]  │
-  │   imm[3:0] ──────────────►│ sel: branch  │
-  │                            └──────────────┘
-  └───────────────────────────────────────────┘</code></pre>
-</section>
-
-<section>
-  <h2>The Verilog — cpu_core.v</h2>
-  <pre><code class="language-verilog" style="font-size: 0.48em;">module cpu_core (
-    input  wire       clk,
-    input  wire       rst_n,
-    input  wire [7:0] instr_data,   // from external program memory
-    input  wire [3:0] port_in,      // 4-bit input port
-    output wire [3:0] pc_out,       // program counter → address bus
-    output wire [3:0] acc_out,      // accumulator → visible result
-    output wire       carry_out, zero_out, halted_out, phase_out
-);
-    // State
-    reg [3:0] acc, pc;
-    reg [7:0] ir;
-    reg       carry, zero, halted, phase;
-
-    // Decode
-    wire [3:0] opcode = ir[7:4];
-    wire [3:0] imm    = ir[3:0];
-
-    // ALU (combinational) — computes ALL results, MUX selects
-    always @(*) begin
-        case (opcode)
-            4'h1: {next_carry, next_acc} = {carry, imm};          // LDI
-            4'h2: {next_carry, next_acc} = acc + imm;             // ADD
-            4'h3: {next_carry, next_acc} = acc - imm;             // SUB
-            4'h4: {next_carry, next_acc} = {carry, acc & imm};    // AND
-            // ... OR, XOR, NOT, SHL, SHR, IN ...
-        endcase
-    end
-
-    // FSM (sequential)
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            acc<=0; pc<=0; ir<=0; carry<=0; zero<=0; halted<=0; phase<=0;
-        end else if (!halted) begin
-            if (phase == 0) begin ir <= instr_data; phase <= 1; end
-            else begin acc<=next_acc; pc<=next_pc; /*...*/ phase<=0; end
-        end
-    end
-endmodule</code></pre>
-  <p class="small">Full source: <code>src/cpu_core.v</code> (219 lines)</p>
-</section>
-
-<section>
-  <h2>TinyTapeout Wrapper</h2>
-  <pre><code class="language-verilog" style="font-size: 0.52em;">module tt_um_fidel_makatia_4bit_cpu (
-    input  wire       clk,        // System clock
-    input  wire       rst_n,      // Active-low reset
-    input  wire       ena,        // Design enable
-    input  wire [7:0] ui_in,      // 8 input pins  → instruction word
-    output wire [7:0] uo_out,     // 8 output pins → acc + flags
-    input  wire [7:0] uio_in,     // Bidir input   → input port [7:4]
-    output wire [7:0] uio_out,    // Bidir output  → program counter [3:0]
-    output wire [7:0] uio_oe      // Bidir enable  → 0x0F (lower = output)
-);
-    cpu_core core (
-        .clk(clk), .rst_n(rst_n),
-        .instr_data(ui_in),              // instruction from pins
-        .port_in(uio_in[7:4]),           // input port (upper nibble)
-        .pc_out(uio_out[3:0]),           // PC → lower nibble out
-        .acc_out(uo_out[3:0]),           // accumulator → output
-        .carry_out(uo_out[4]),           // flags on remaining bits
-        .zero_out(uo_out[5]),
-        .halted_out(uo_out[6]),
-        .phase_out(uo_out[7])
-    );
-    assign uio_oe = 8'b0000_1111;       // lower 4 = output, upper 4 = input
-    assign uio_out[7:4] = 4'b0000;
-endmodule</code></pre>
-</section>
-
-<!-- ============================================================ -->
-<!-- PIN MAPPING -->
-<!-- ============================================================ -->
-<section>
-  <h2>TinyTapeout Pin Mapping</h2>
-  <div class="two-col">
-    <div>
-      <div class="box box-blue">
-        <h3>Inputs (ui_in)</h3>
-        <table style="font-size: 0.5em;">
-          <tr><th>Pin</th><th>Signal</th></tr>
-          <tr><td>ui_in[7]</td><td>Opcode MSB</td></tr>
-          <tr><td>ui_in[6]</td><td>Opcode bit 6</td></tr>
-          <tr><td>ui_in[5]</td><td>Opcode bit 5</td></tr>
-          <tr><td>ui_in[4]</td><td>Opcode LSB</td></tr>
-          <tr><td>ui_in[3]</td><td>Immediate MSB</td></tr>
-          <tr><td>ui_in[2]</td><td>Immediate bit 2</td></tr>
-          <tr><td>ui_in[1]</td><td>Immediate bit 1</td></tr>
-          <tr><td>ui_in[0]</td><td>Immediate LSB</td></tr>
-        </table>
-      </div>
-    </div>
-    <div>
-      <div class="box box-green">
-        <h3>Outputs (uo_out)</h3>
-        <table style="font-size: 0.5em;">
-          <tr><th>Pin</th><th>Signal</th></tr>
-          <tr><td>uo_out[3:0]</td><td>Accumulator (result)</td></tr>
-          <tr><td>uo_out[4]</td><td>Carry flag</td></tr>
-          <tr><td>uo_out[5]</td><td>Zero flag</td></tr>
-          <tr><td>uo_out[6]</td><td>Halted</td></tr>
-          <tr><td>uo_out[7]</td><td>Phase (fetch/exec)</td></tr>
-        </table>
-      </div>
-      <div class="box" style="border-color: #d29922;">
-        <h3>Bidirectional (uio)</h3>
-        <table style="font-size: 0.5em;">
-          <tr><th>Pin</th><th>Dir</th><th>Signal</th></tr>
-          <tr><td>uio[3:0]</td><td>OUT</td><td>Program Counter</td></tr>
-          <tr><td>uio[7:4]</td><td>IN</td><td>Input port</td></tr>
-        </table>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ============================================================ -->
-<!-- PART 3: SIMULATION -->
-<!-- ============================================================ -->
-<section class="section-slide">
-  <h1>Part 3</h1>
-  <h2>Simulation &amp; Testing</h2>
-</section>
-
-<section>
-  <h2>Example: Counter Program</h2>
-  <div class="two-col">
-    <div>
-      <table style="font-size: 0.6em;">
-        <tr><th>Addr</th><th>Hex</th><th>Binary</th><th>ASM</th><th>What it does</th></tr>
-        <tr><td>0x0</td><td>0x10</td><td>0001 0000</td><td>LDI 0</td><td>A = 0</td></tr>
-        <tr><td>0x1</td><td>0x21</td><td>0010 0001</td><td>ADD 1</td><td>A = A + 1</td></tr>
-        <tr><td>0x2</td><td>0xD1</td><td>1101 0001</td><td>JNZ 1</td><td>Loop if A != 0</td></tr>
-        <tr><td>0x3</td><td>0xF0</td><td>1111 0000</td><td>HLT</td><td>Stop</td></tr>
-      </table>
-    </div>
-    <div class="fragment">
-      <div class="box">
-        <p class="small"><strong>Execution trace:</strong></p>
-        <pre><code class="language-plaintext" style="font-size: 0.85em;">A = 0  → ADD 1 → A = 1  → JNZ 1 ✓
-A = 1  → ADD 1 → A = 2  → JNZ 1 ✓
-A = 2  → ADD 1 → A = 3  → JNZ 1 ✓
-...
-A = 14 → ADD 1 → A = 15 → JNZ 1 ✓
-A = 15 → ADD 1 → A = 0  → JNZ 1 ✗
-→ HLT (counts 0→15→0 then stops)</code></pre>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section>
-  <h2>Example: Fibonacci</h2>
-  <div class="two-col">
-    <div>
-      <table style="font-size: 0.6em;">
-        <tr><th>Addr</th><th>Hex</th><th>ASM</th><th>ACC</th></tr>
-        <tr><td>0x0</td><td>0x10</td><td>LDI 0</td><td>0</td></tr>
-        <tr><td>0x1</td><td>0x21</td><td>ADD 1</td><td>1</td></tr>
-        <tr><td>0x2</td><td>0x20</td><td>ADD 0</td><td>1</td></tr>
-        <tr><td>0x3</td><td>0x21</td><td>ADD 1</td><td>2</td></tr>
-        <tr><td>0x4</td><td>0x21</td><td>ADD 1</td><td>3</td></tr>
-        <tr><td>0x5</td><td>0x22</td><td>ADD 2</td><td>5</td></tr>
-        <tr><td>0x6</td><td>0x23</td><td>ADD 3</td><td>8</td></tr>
-        <tr><td>0x7</td><td>0x25</td><td>ADD 5</td><td>13</td></tr>
-        <tr><td>0x8</td><td>0xF0</td><td>HLT</td><td>—</td></tr>
-      </table>
-    </div>
-    <div>
-      <div class="box">
-        <p class="small"><strong>Sequence:</strong> 0, 1, 1, 2, 3, 5, 8, <span class="highlight-green">13</span></p>
-        <p class="small">Since we only have an accumulator (no second register), each ADD uses an immediate. This means we "hardcode" the previous Fibonacci number as the immediate operand.</p>
-        <p class="small fragment"><strong>Challenge:</strong> Can you write a looping Fibonacci using the IN instruction to provide the second operand?</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section>
-  <h2>Example: Shift &amp; Carry</h2>
-  <table>
-    <tr><th>Addr</th><th>Hex</th><th>ASM</th><th>ACC (binary)</th><th>C</th><th>Z</th></tr>
-    <tr><td>0x0</td><td>0x11</td><td>LDI 1</td><td>0001</td><td>0</td><td>0</td></tr>
-    <tr class="fragment"><td>0x1</td><td>0x80</td><td>SHL</td><td>0010</td><td>0</td><td>0</td></tr>
-    <tr class="fragment"><td>0x2</td><td>0x80</td><td>SHL</td><td>0100</td><td>0</td><td>0</td></tr>
-    <tr class="fragment"><td>0x3</td><td>0x80</td><td>SHL</td><td>1000</td><td>0</td><td>0</td></tr>
-    <tr class="fragment"><td>0x4</td><td>0x80</td><td>SHL</td><td class="highlight-red">0000</td><td class="highlight-yellow">1</td><td class="highlight-yellow">1</td></tr>
-    <tr class="fragment"><td>0x5</td><td>0xF0</td><td>HLT</td><td>—</td><td>—</td><td>—</td></tr>
-  </table>
-  <p class="fragment small">The MSB "falls off" into the <span class="highlight-yellow">carry flag</span>!</p>
-</section>
-
-<section>
-  <h2>Running the Testbench</h2>
-  <pre><code class="language-bash">$ make test
-========== RTL Simulation ==========
-
-========== Test 1: Basic ALU ==========
-  PASS: LDI 5 — acc=5, Z=0
-  PASS: ADD 3 — acc=8
-  PASS: SUB 2 — acc=6
-  PASS: AND f — acc=6
-  ...
-
-========== Test 4: Counter ==========
-  PASS: Counter step 0 — acc=1
-  PASS: Counter step 1 — acc=2
-  ...
-  PASS: Counter reached 0 (wrapped), halted
-
-========== Test 6: Input Port ==========
-  PASS: IN — acc=9, read from port
-
-  RESULTS: 51 / 51 passed
-  ✓ ALL TESTS PASSED</code></pre>
-</section>
-
-<section>
-  <h2>Waveform Viewer</h2>
-  <pre><code class="language-bash">$ make wave     # Opens GTKWave</code></pre>
-  <div class="box">
-    <pre><code class="language-plaintext" style="font-size: 0.75em;">  Add these signals to GTKWave:
-  ┌─────────────────────────────────────────────────────────┐
-  │ Signal     │▁▁╱╲▁▁╱╲▁▁╱╲▁▁╱╲▁▁╱╲▁▁╱╲▁▁╱╲▁▁╱╲▁▁╱╲▁▁│
-  ├────────────┼────────────────────────────────────────────┤
-  │ clk        │ ╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲ │
-  │ rst_n      │▁▁▁▁╱▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔│
-  │ phase      │     0  1  0  1  0  1  0  1  0  1        │
-  │ pc[3:0]    │     0     1     2     3     4            │
-  │ ir[7:0]    │     10    21    D1    21    D1           │
-  │ acc[3:0]   │     0     1     1     2     2            │
-  │ carry      │     0     0     0     0     0            │
-  │ zero       │     1     0     0     0     0            │
-  └────────────┴────────────────────────────────────────────┘</code></pre>
-  </div>
-  <p class="small">Observe FETCH/EXECUTE alternating. ACC updates on EXECUTE edges.</p>
-</section>
-
-<section>
-  <h2>Hands-On: Write Your Own Program!</h2>
-  <div class="box box-blue">
-    <p><strong>Challenge 1:</strong> Write a program that loads 15 and counts DOWN to 0, then halts.</p>
-    <p class="tiny fragment">Hint: SUB 1, then JNZ to loop back, then HLT</p>
-  </div>
-  <div class="box box-green" style="margin-top: 12px;">
-    <p><strong>Challenge 2:</strong> Write a program that reads the input port, doubles it (SHL), and halts.</p>
-    <p class="tiny fragment">Hint: IN, SHL, HLT — only 3 instructions!</p>
-  </div>
-  <div class="box" style="border-color: #d29922; margin-top: 12px;">
-    <p><strong>Challenge 3:</strong> Write a program that checks if the input is zero. Output 1 if yes, 0 if no.</p>
-    <p class="tiny fragment">Hint: IN, JZ to a LDI 1, otherwise LDI 0, then HLT</p>
-  </div>
-</section>
-
-<!-- ============================================================ -->
-<!-- PART 4: SILICON -->
-<!-- ============================================================ -->
-<section class="section-slide">
-  <h1>Part 4</h1>
-  <h2>From Code to Silicon</h2>
-</section>
-
-<section>
-  <h2>The Journey to a Chip</h2>
-  <div style="text-align: center; font-size: 0.9em;">
-    <div class="fragment" style="display: inline-block; margin: 8px;">
-      <div class="box box-blue" style="display: inline-block; padding: 12px 24px;">
-        <strong>1. RTL Design</strong><br>
-        <span class="small">Verilog code</span>
-      </div>
-    </div>
-    <span class="fragment">→</span>
-    <div class="fragment" style="display: inline-block; margin: 8px;">
-      <div class="box box-green" style="display: inline-block; padding: 12px 24px;">
-        <strong>2. Simulation</strong><br>
-        <span class="small">iverilog + testbench</span>
-      </div>
-    </div>
-    <span class="fragment">→</span>
-    <div class="fragment" style="display: inline-block; margin: 8px;">
-      <div class="box" style="border-color: #d29922; display: inline-block; padding: 12px 24px;">
-        <strong>3. Synthesis</strong><br>
-        <span class="small">Yosys → gate netlist</span>
-      </div>
-    </div>
-    <br>
-    <span class="fragment">→</span>
-    <div class="fragment" style="display: inline-block; margin: 8px;">
-      <div class="box" style="border-color: #f85149; display: inline-block; padding: 12px 24px;">
-        <strong>4. Place &amp; Route</strong><br>
-        <span class="small">OpenLane → layout</span>
-      </div>
-    </div>
-    <span class="fragment">→</span>
-    <div class="fragment" style="display: inline-block; margin: 8px;">
-      <div class="box" style="border-color: #a371f7; display: inline-block; padding: 12px 24px;">
-        <strong>5. GDS Export</strong><br>
-        <span class="small">Physical masks</span>
-      </div>
-    </div>
-    <span class="fragment">→</span>
-    <div class="fragment" style="display: inline-block; margin: 8px;">
-      <div class="box" style="border-color: #f0883e; display: inline-block; padding: 12px 24px;">
-        <strong>6. Fabrication</strong><br>
-        <span class="small">IHP 130nm fab</span>
-      </div>
-    </div>
-  </div>
-  <p class="fragment small" style="margin-top: 20px;">We do steps 1-3 locally. Steps 4-5 run automatically in GitHub CI. Step 6 is done by IHP!</p>
-</section>
-
-<section>
-  <h2>Synthesis: Verilog → Gates</h2>
-  <pre><code class="language-bash">$ make synth
-========== Synthesis (IHP SG13G2) ==========
-
-   Number of wires:                212
-   Number of wire bits:            534
-   Number of cells:                194
-
-   Chip area for module: 2677.305600 um²</code></pre>
-  <div class="two-col">
-    <div class="box">
-      <p class="small"><strong>What Yosys does:</strong></p>
-      <ol class="small">
-        <li>Reads your Verilog</li>
-        <li>Maps <code>if/case</code> to MUXes</li>
-        <li>Maps <code>+</code> to full adders</li>
-        <li>Maps <code>always @(posedge)</code> to DFFs</li>
-        <li>Optimizes and maps to IHP cells</li>
-      </ol>
-    </div>
-    <div class="box">
-      <p class="small"><strong>Result:</strong></p>
-      <ul class="small">
-        <li>194 standard cells</li>
-        <li>20 flip-flops</li>
-        <li>174 logic gates</li>
-        <li>2,677 um² area</li>
-        <li>~15% of tile utilized</li>
-      </ul>
-    </div>
-  </div>
-</section>
-
-<section>
-  <h2>IHP SG13G2 Standard Cells</h2>
-  <p class="small">Our CPU uses 22 different cell types from the IHP library:</p>
-  <div class="two-col">
-    <div>
-      <table style="font-size: 0.48em;">
-        <tr><th>Cell</th><th>Count</th><th>Function</th></tr>
-        <tr><td>sg13g2_dfrbpq_1</td><td>20</td><td>D Flip-Flop</td></tr>
-        <tr><td>sg13g2_nor2_1</td><td>17</td><td>2-input NOR</td></tr>
-        <tr><td>sg13g2_o21ai_1</td><td>15</td><td>OR-AND-INV</td></tr>
-        <tr><td>sg13g2_nand2_1</td><td>15</td><td>2-input NAND</td></tr>
-        <tr><td>sg13g2_a22oi_1</td><td>15</td><td>AND-OR-INV</td></tr>
-        <tr><td>sg13g2_nand3_1</td><td>14</td><td>3-input NAND</td></tr>
-        <tr><td>sg13g2_inv_1</td><td>14</td><td>Inverter</td></tr>
-        <tr><td>sg13g2_and2_1</td><td>10</td><td>2-input AND</td></tr>
-        <tr><td>sg13g2_a21oi_1</td><td>10</td><td>AND-OR-INV</td></tr>
-        <tr><td>sg13g2_nor4_1</td><td>9</td><td>4-input NOR</td></tr>
-        <tr><td>sg13g2_nand2b_1</td><td>9</td><td>NAND (inv input)</td></tr>
-      </table>
-    </div>
-    <div>
-      <table style="font-size: 0.48em;">
-        <tr><th>Cell</th><th>Count</th><th>Function</th></tr>
-        <tr><td>sg13g2_mux2_1</td><td>8</td><td>2:1 MUX</td></tr>
-        <tr><td>sg13g2_xnor2_1</td><td>6</td><td>2-input XNOR</td></tr>
-        <tr><td>sg13g2_nor3_1</td><td>6</td><td>3-input NOR</td></tr>
-        <tr><td>sg13g2_nand4_1</td><td>6</td><td>4-input NAND</td></tr>
-        <tr><td>sg13g2_a221oi_1</td><td>5</td><td>AND-AND-OR-INV</td></tr>
-        <tr><td>sg13g2_xor2_1</td><td>4</td><td>2-input XOR</td></tr>
-        <tr><td>sg13g2_nor2b_1</td><td>4</td><td>NOR (inv input)</td></tr>
-        <tr><td>sg13g2_nand3b_1</td><td>3</td><td>3-NAND (inv)</td></tr>
-        <tr><td>sg13g2_or2_1</td><td>2</td><td>2-input OR</td></tr>
-        <tr><td>sg13g2_and4_1</td><td>1</td><td>4-input AND</td></tr>
-        <tr><td>sg13g2_and3_1</td><td>1</td><td>3-input AND</td></tr>
-      </table>
-      <p class="tiny" style="margin-top: 8px;"><strong>Total: 194 cells</strong></p>
-    </div>
-  </div>
-</section>
-
-<section>
-  <h2>Gate-Level Verification</h2>
-  <pre><code class="language-bash">$ make test_gl
-========== Gate-Level Simulation (IHP SG13G2) ==========
-
-  ...same 51 tests...
-
-  RESULTS: 51 / 51 passed
-  ✓ ALL TESTS PASSED</code></pre>
-  <div class="box">
-    <p class="small"><strong>Why gate-level sim matters:</strong></p>
-    <ul class="small">
-      <li>RTL sim tests your <em>design intent</em></li>
-      <li>Gate-level sim tests the <em>actual netlist</em> that goes to silicon</li>
-      <li>Catches synthesis tool bugs, timing issues, optimization errors</li>
-      <li>51/51 PASS at both levels = high confidence</li>
-    </ul>
-  </div>
-</section>
-
-<section>
-  <h2>TinyTapeout Submission</h2>
-  <ol>
-    <li class="fragment">
-      Fork the <a href="https://github.com/TinyTapeout/ttihp-verilog-template">TinyTapeout IHP template</a>
-    </li>
-    <li class="fragment">
-      Copy your source files:
-      <pre><code class="language-bash">cp src/project.v src/cpu_core.v src/config.json → src/
-cp info.yaml → info.yaml</code></pre>
-    </li>
-    <li class="fragment">
-      Push to GitHub → <strong>CI runs automatically</strong>
-      <ul class="small">
-        <li>OpenLane synthesizes, places, and routes</li>
-        <li>DRC checks pass</li>
-        <li>GDS file generated</li>
-      </ul>
-    </li>
-    <li class="fragment">
-      Submit at <a href="https://app.tinytapeout.com">app.tinytapeout.com</a>
-    </li>
-    <li class="fragment">
-      <span class="highlight-green"><strong>Wait for your chip to arrive!</strong></span>
-    </li>
-  </ol>
-</section>
-
-<!-- ============================================================ -->
-<!-- VERILOG PLAYGROUND (ZERO INSTALL) -->
-<!-- ============================================================ -->
-<section class="section-slide">
-  <h1>Getting Started</h1>
-  <h2>Zero-Install Verilog Playground</h2>
-</section>
-
-<section>
   <h2>No Install Needed: Browser-Based Tools</h2>
   <p class="small">Before installing anything, you can write and simulate Verilog <strong>right in your browser</strong>:</p>
   <table>
@@ -945,7 +612,7 @@ cp info.yaml → info.yaml</code></pre>
         <li>Set <strong>Testbench + Design</strong> language to <code>Verilog</code></li>
         <li>Set simulator to <strong>Icarus Verilog 12.0</strong></li>
         <li>Check <strong>"Open EPWave after run"</strong> for waveforms</li>
-        <li>Paste the code on the right →</li>
+        <li>Paste the code on the right</li>
         <li>Click <strong>Run</strong></li>
       </ol>
       <div class="box small" style="margin-top: 8px;">
@@ -1060,310 +727,1050 @@ endmodule</code></pre>
   </div>
 </section>
 
-<!-- ============================================================ -->
-<!-- TINYTAPEOUT WEB DESIGN FLOW -->
-<!-- ============================================================ -->
+<!-- NEW SLIDE: Your First Verilog Module -->
 <section>
-  <h2>TinyTapeout: Web-Based Design Flow</h2>
-  <p class="small">TinyTapeout offers <strong>two ways</strong> to design your chip — both start in the browser:</p>
+  <h2>Your First Verilog Module</h2>
   <div class="two-col">
     <div>
       <div class="box box-blue">
-        <h3>Option A: Wokwi (Visual)</h3>
-        <ul class="small">
-          <li>Drag-and-drop logic gates</li>
-          <li>No code — build circuits visually</li>
-          <li>Simulate in the browser</li>
-          <li>Auto-generates netlist for tapeout</li>
-          <li>Great for beginners!</li>
-        </ul>
-        <p class="tiny" style="margin-top:6px;"><a href="https://tinytapeout.com/digital_design/wokwi/">tinytapeout.com/digital_design/wokwi</a></p>
+        <h3>Step 1: A Simple AND Gate</h3>
+        <pre><code class="language-verilog" style="font-size: 0.7em;">module and_gate (
+  input  wire a,      // input port
+  input  wire b,      // input port
+  output wire y       // output port
+);
+  assign y = a & b;   // continuous assignment
+endmodule</code></pre>
+        <p class="tiny">Every module has: a <strong>name</strong>, <strong>ports</strong> (input/output), and <strong>behavior</strong> (assign/always).</p>
       </div>
     </div>
     <div>
       <div class="box box-green">
-        <h3>Option B: Verilog (Code)</h3>
-        <ul class="small">
-          <li>Fork the GitHub template</li>
-          <li>Write Verilog (even in GitHub's web editor!)</li>
-          <li>Push → GitHub Actions runs OpenLane</li>
-          <li>Automated synthesis, PnR, GDS</li>
-          <li>Full control, real HDL skills</li>
-        </ul>
-        <p class="tiny" style="margin-top:6px;"><a href="https://tinytapeout.com/digital_design/">tinytapeout.com/digital_design</a></p>
+        <h3>Step 2: A 4-bit Adder</h3>
+        <pre><code class="language-verilog" style="font-size: 0.7em;">module adder4 (
+  input  wire [3:0] a,   // 4-bit input
+  input  wire [3:0] b,   // 4-bit input
+  output wire [3:0] sum, // 4-bit sum
+  output wire       cout // carry out
+);
+  assign {cout, sum} = a + b;
+endmodule</code></pre>
+        <p class="tiny"><code>[3:0]</code> declares a 4-bit bus. <code>{cout, sum}</code> concatenates signals. The <code>+</code> operator synthesizes to a ripple-carry adder.</p>
       </div>
     </div>
   </div>
   <div class="box small" style="margin-top: 8px;">
-    <p><strong>Our workshop uses Option B</strong> (Verilog). But if a participant has never written code before, start them on Option A with Wokwi — they can build a simple gate circuit and see it taped out!</p>
+    <p><strong>Key syntax:</strong> <code>module</code> ... <code>endmodule</code> wraps every design. <code>input</code>/<code>output</code> declare ports. <code>wire</code> for combinational, <code>reg</code> for sequential. <code>assign</code> for continuous logic.</p>
   </div>
 </section>
 
+<!-- ============================================================ -->
+<!-- PART 4: TESTING — TESTBENCHES & SIMULATION -->
+<!-- ============================================================ -->
+<section class="section-slide">
+  <h1>Part 4</h1>
+  <h2>Testing — Testbenches &amp; Simulation</h2>
+</section>
+
+<!-- NEW SLIDE: What is a Testbench? -->
 <section>
-  <h2>Wokwi: Build a Circuit Visually</h2>
+  <h2>What is a Testbench?</h2>
   <div class="two-col">
     <div>
-      <pre><code class="language-plaintext" style="font-size: 0.7em;">  Wokwi Editor (in browser):
-  ┌────────────────────────────┐
-  │  [Gates] [Wires] [Sim]    │
-  │                            │
-  │   ┌───┐                   │
-  │ ──┤AND├──┐                │
-  │ ──┤   │  │  ┌───┐        │
-  │   └───┘  └──┤OR ├── OUT  │
-  │   ┌───┐  ┌──┤   │        │
-  │ ──┤AND├──┘  └───┘        │
-  │ ──┤   │                   │
-  │   └───┘                   │
-  │                            │
-  │  [▶ Simulate]  [Export]   │
-  └────────────────────────────┘</code></pre>
+      <p class="small">A testbench is a <strong>Verilog module that wraps your design</strong> and tests it. It is not synthesized — it only runs in simulation.</p>
+      <div class="box box-blue">
+        <h3>Testbench Structure</h3>
+        <ol class="small">
+          <li><strong>Instantiate</strong> the Design Under Test (DUT)</li>
+          <li><strong>Generate</strong> clock and reset signals</li>
+          <li><strong>Feed</strong> input stimulus (test vectors)</li>
+          <li><strong>Check</strong> outputs (assertions)</li>
+          <li><strong>Report</strong> pass/fail results</li>
+        </ol>
+      </div>
     </div>
     <div>
-      <div class="box">
-        <p class="small"><strong>Try it:</strong></p>
-        <ol class="small">
-          <li>Go to <a href="https://wokwi.com/">wokwi.com</a></li>
-          <li>Create a new project → "Logic Gates"</li>
-          <li>Drag AND, OR, NOT gates onto the canvas</li>
-          <li>Connect wires between them</li>
-          <li>Click <strong>Simulate</strong> to test</li>
-          <li>Toggle inputs, watch outputs change</li>
-        </ol>
-        <p class="small" style="margin-top: 12px;">For TinyTapeout, use their Wokwi template:<br>
-        <a href="https://tinytapeout.com/digital_design/wokwi/" class="tiny">tinytapeout.com/digital_design/wokwi</a></p>
+      <pre><code class="language-verilog" style="font-size: 0.6em;">module tb;           // no ports!
+  // 1. Signals
+  reg clk = 0, rst_n = 0;
+  reg [3:0] a;
+  wire [3:0] result;
+
+  // 2. Instantiate DUT
+  my_design uut (
+    .clk(clk), .rst_n(rst_n),
+    .a(a), .result(result)
+  );
+
+  // 3. Clock generation
+  always #5 clk = ~clk; // 100MHz
+
+  // 4. Stimulus + checking
+  initial begin
+    #20 rst_n = 1;   // release reset
+    a = 4'd5;
+    #10;
+    if (result !== 4'd5)
+      $display("FAIL!");
+    else
+      $display("PASS!");
+    $finish;
+  end
+endmodule</code></pre>
+    </div>
+  </div>
+</section>
+
+<!-- NEW SLIDE: Writing a Testbench -->
+<section>
+  <h2>Writing a Testbench</h2>
+  <p class="small">Here is a testbench for the 4-bit counter from Part 3:</p>
+  <pre><code class="language-verilog" style="font-size: 0.52em;">module counter_tb;
+  reg clk = 0, rst_n = 0;
+  wire [3:0] count;
+
+  // Instantiate the design under test
+  counter uut (.clk(clk), .rst_n(rst_n), .count(count));
+
+  // Generate a 100 MHz clock (period = 10 time units)
+  always #5 clk = ~clk;
+
+  integer pass = 0, fail = 0;
+
+  initial begin
+    // Set up waveform dumping for GTKWave
+    $dumpfile("counter_tb.vcd");    // output file name
+    $dumpvars(0, counter_tb);       // dump all signals in this module
+
+    // Hold reset for 20ns
+    #20 rst_n = 1;
+
+    // Check counter increments correctly
+    #10; if (count == 4'd1) begin $display("PASS: count=1"); pass=pass+1; end
+         else begin $display("FAIL: expected 1, got %d", count); fail=fail+1; end
+    #10; if (count == 4'd2) begin $display("PASS: count=2"); pass=pass+1; end
+         else begin $display("FAIL: expected 2, got %d", count); fail=fail+1; end
+
+    #100; // Let it run a while
+    $display("Results: %0d passed, %0d failed", pass, fail);
+    $finish;
+  end
+endmodule</code></pre>
+  <div class="box small">
+    <p><code>$dumpfile</code>/<code>$dumpvars</code> record signals to a VCD file. <code>#10</code> waits 10 time units. <code>$display</code> prints to console. <code>$finish</code> ends simulation.</p>
+  </div>
+</section>
+
+<!-- NEW SLIDE: Running Simulation -->
+<section>
+  <h2>Running Simulation</h2>
+  <div class="two-col">
+    <div>
+      <div class="box box-blue">
+        <h3>The Command</h3>
+        <pre><code class="language-bash" style="font-size: 0.75em;"># Compile design + testbench
+iverilog -o out counter.v counter_tb.v
+
+# Run the simulation
+vvp out
+
+# View waveforms
+gtkwave counter_tb.vcd</code></pre>
+      </div>
+      <div class="box small">
+        <p><strong>iverilog</strong> = compiler (Verilog -> simulator binary)</p>
+        <p><strong>vvp</strong> = simulation runtime (runs the binary)</p>
+        <p><strong>gtkwave</strong> = waveform viewer (reads VCD files)</p>
+      </div>
+    </div>
+    <div>
+      <div class="box box-green">
+        <h3>What is a VCD File?</h3>
+        <p class="small"><strong>Value Change Dump</strong> — a text file that records every signal change during simulation.</p>
+        <pre><code class="language-plaintext" style="font-size: 0.65em;">$timescale 1ns $end
+$var wire 4 ! count [3:0] $end
+#0  !0000
+#10 !0001
+#20 !0010
+#30 !0011
+...</code></pre>
+        <p class="tiny">GTKWave reads this file and draws the waveforms graphically. You can zoom in/out, add/remove signals, and measure timing.</p>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ============================================================ -->
-<!-- TOOL INSTALLATION -->
-<!-- ============================================================ -->
-<section class="section-slide">
-  <h1>Local Tool Setup</h1>
-  <h2>For Full Simulation &amp; Synthesis</h2>
+<section>
+  <h2>Waveform Viewer</h2>
+  <pre><code class="language-bash">$ make wave     # Opens GTKWave</code></pre>
+  <div class="box">
+    <pre><code class="language-plaintext" style="font-size: 0.75em;">  Add these signals to GTKWave:
+  +-------------------------------------------------------------+
+  | Signal     |__/\__/\__/\__/\__/\__/\__/\__/\__/\__|
+  +------------+--------------------------------------------+
+  | clk        | /\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\  |
+  | rst_n      |____/                                      |
+  | phase      |     0  1  0  1  0  1  0  1  0  1        |
+  | pc[3:0]    |     0     1     2     3     4            |
+  | ir[7:0]    |     10    21    D1    21    D1           |
+  | acc[3:0]   |     0     1     1     2     2            |
+  | carry      |     0     0     0     0     0            |
+  | zero       |     1     0     0     0     0            |
+  +------------+--------------------------------------------+</code></pre>
+  </div>
+  <p class="small">Observe FETCH/EXECUTE alternating. ACC updates on EXECUTE edges.</p>
 </section>
 
+<!-- NEW SLIDE: Simulation Flow Summary -->
 <section>
-  <h2>macOS Setup</h2>
-  <pre><code class="language-bash"># 1. Install Homebrew (if needed)
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-# 2. Install simulation tools
-brew install icarus-verilog        # Verilog simulator
-brew install --cask gtkwave        # Waveform viewer
-
-# 3. Install synthesis tool
-brew install yosys                 # RTL synthesis
-
-# 4. Install IHP PDK (standard cell library)
-cd ~
-git clone --depth 1 https://github.com/IHP-GmbH/IHP-Open-PDK.git
-
-# 5. Verify
-iverilog -V | head -1
-yosys --version
-ls ~/IHP-Open-PDK/ihp-sg13g2/</code></pre>
-</section>
-
-<section>
-  <h2>Windows Setup (WSL2)</h2>
-  <pre><code class="language-powershell"># Step 1: Install WSL2 (PowerShell as Administrator)
-wsl --install -d Ubuntu-22.04
-
-# Step 2: Restart computer, open "Ubuntu" from Start menu</code></pre>
-  <p class="small">Then inside the WSL2 Ubuntu terminal:</p>
-  <pre><code class="language-bash"># Follow the Linux instructions (next slide)</code></pre>
-  <div class="box small" style="margin-top: 12px;">
-    <p><strong>Alternative (no WSL2):</strong> Install MSYS2 from <a href="https://www.msys2.org/">msys2.org</a></p>
-    <pre><code class="language-bash">pacman -S mingw-w64-x86_64-iverilog
-pacman -S mingw-w64-x86_64-yosys</code></pre>
-    <p>Or download the all-in-one <a href="https://github.com/YosysHQ/oss-cad-suite-build/releases">OSS CAD Suite</a></p>
+  <h2>Simulation Flow Summary</h2>
+  <div style="text-align: center; font-size: 0.9em;">
+    <div class="fragment" style="display: inline-block; margin: 8px;">
+      <div class="box box-blue" style="display: inline-block; padding: 12px 24px;">
+        <strong>1. Write Design</strong><br>
+        <span class="small">counter.v</span>
+      </div>
+    </div>
+    <span class="fragment">-></span>
+    <div class="fragment" style="display: inline-block; margin: 8px;">
+      <div class="box box-green" style="display: inline-block; padding: 12px 24px;">
+        <strong>2. Write Testbench</strong><br>
+        <span class="small">counter_tb.v</span>
+      </div>
+    </div>
+    <span class="fragment">-></span>
+    <div class="fragment" style="display: inline-block; margin: 8px;">
+      <div class="box" style="border-color: #d29922; display: inline-block; padding: 12px 24px;">
+        <strong>3. Compile</strong><br>
+        <span class="small">iverilog</span>
+      </div>
+    </div>
+    <br>
+    <span class="fragment">-></span>
+    <div class="fragment" style="display: inline-block; margin: 8px;">
+      <div class="box" style="border-color: #f85149; display: inline-block; padding: 12px 24px;">
+        <strong>4. Simulate</strong><br>
+        <span class="small">vvp -> .vcd</span>
+      </div>
+    </div>
+    <span class="fragment">-></span>
+    <div class="fragment" style="display: inline-block; margin: 8px;">
+      <div class="box" style="border-color: #a371f7; display: inline-block; padding: 12px 24px;">
+        <strong>5. View Waves</strong><br>
+        <span class="small">GTKWave</span>
+      </div>
+    </div>
+  </div>
+  <div class="box small fragment" style="margin-top: 20px;">
+    <p><strong>Quick command:</strong> <code>iverilog -o out design.v tb.v && vvp out && gtkwave tb.vcd</code></p>
+    <p>Or in our project: <code>make test</code> (compile + run) then <code>make wave</code> (view).</p>
   </div>
 </section>
 
-<section>
-  <h2>Linux (Ubuntu/Debian) Setup</h2>
-  <pre><code class="language-bash"># 1. Install simulation tools
-sudo apt update
-sudo apt install -y iverilog gtkwave
-
-# 2. Install synthesis tool
-sudo apt install -y yosys
-
-# (If yosys is too old, use OSS CAD Suite instead)
-
-# 3. Install IHP PDK
-cd ~
-git clone --depth 1 https://github.com/IHP-GmbH/IHP-Open-PDK.git
-
-# 4. Verify everything works
-iverilog -V | head -1
-yosys --version
-ls ~/IHP-Open-PDK/ihp-sg13g2/</code></pre>
+<!-- ============================================================ -->
+<!-- PART 5: DIGITAL SYNTHESIS -->
+<!-- ============================================================ -->
+<section class="section-slide">
+  <h1>Part 5</h1>
+  <h2>Digital Synthesis — From Code to Gates</h2>
 </section>
 
 <section>
-  <h2>Code Editor Setup</h2>
+  <h2>The Journey to a Chip</h2>
+  <div style="text-align: center; font-size: 0.9em;">
+    <div class="fragment" style="display: inline-block; margin: 8px;">
+      <div class="box box-blue" style="display: inline-block; padding: 12px 24px;">
+        <strong>1. RTL Design</strong><br>
+        <span class="small">Verilog code</span>
+      </div>
+    </div>
+    <span class="fragment">-></span>
+    <div class="fragment" style="display: inline-block; margin: 8px;">
+      <div class="box box-green" style="display: inline-block; padding: 12px 24px;">
+        <strong>2. Simulation</strong><br>
+        <span class="small">iverilog + testbench</span>
+      </div>
+    </div>
+    <span class="fragment">-></span>
+    <div class="fragment" style="display: inline-block; margin: 8px;">
+      <div class="box" style="border-color: #d29922; display: inline-block; padding: 12px 24px;">
+        <strong>3. Synthesis</strong><br>
+        <span class="small">Yosys -> gate netlist</span>
+      </div>
+    </div>
+    <br>
+    <span class="fragment">-></span>
+    <div class="fragment" style="display: inline-block; margin: 8px;">
+      <div class="box" style="border-color: #f85149; display: inline-block; padding: 12px 24px;">
+        <strong>4. Place &amp; Route</strong><br>
+        <span class="small">OpenLane -> layout</span>
+      </div>
+    </div>
+    <span class="fragment">-></span>
+    <div class="fragment" style="display: inline-block; margin: 8px;">
+      <div class="box" style="border-color: #a371f7; display: inline-block; padding: 12px 24px;">
+        <strong>5. GDS Export</strong><br>
+        <span class="small">Physical masks</span>
+      </div>
+    </div>
+    <span class="fragment">-></span>
+    <div class="fragment" style="display: inline-block; margin: 8px;">
+      <div class="box" style="border-color: #f0883e; display: inline-block; padding: 12px 24px;">
+        <strong>6. Fabrication</strong><br>
+        <span class="small">IHP 130nm fab</span>
+      </div>
+    </div>
+  </div>
+  <p class="fragment small" style="margin-top: 20px;">We do steps 1-3 locally. Steps 4-5 run automatically in GitHub CI. Step 6 is done by IHP!</p>
+</section>
+
+<!-- NEW SLIDE: What is Synthesis? -->
+<section>
+  <h2>What is Synthesis?</h2>
   <div class="two-col">
     <div>
       <div class="box box-blue">
-        <h3>VS Code (Recommended)</h3>
-        <pre><code class="language-bash" style="font-size: 0.75em;"># Install VS Code:
-# https://code.visualstudio.com/
+        <h3>Your Verilog...</h3>
+        <pre><code class="language-verilog" style="font-size: 0.7em;">if (sel)
+  out = a;
+else
+  out = b;</code></pre>
+        <pre><code class="language-verilog" style="font-size: 0.7em;">sum = a + b;</code></pre>
+        <pre><code class="language-verilog" style="font-size: 0.7em;">always @(posedge clk)
+  q <= d;</code></pre>
+      </div>
+    </div>
+    <div>
+      <div class="box box-green">
+        <h3>...Becomes Gates</h3>
+        <pre><code class="language-plaintext" style="font-size: 0.7em;">-> MUX2 (multiplexer)</code></pre>
+        <br>
+        <pre><code class="language-plaintext" style="font-size: 0.7em;">-> Full Adder chain</code></pre>
+        <br>
+        <pre><code class="language-plaintext" style="font-size: 0.7em;">-> D Flip-Flop (DFF)</code></pre>
+      </div>
+    </div>
+  </div>
+  <div class="box small" style="margin-top: 12px;">
+    <p>The synthesis tool (<strong>Yosys</strong>) reads your behavioral Verilog description and maps it to actual logic gates from a standard cell library. It is like a compiler, but instead of machine code, it outputs a <strong>netlist</strong> of interconnected gates.</p>
+  </div>
+</section>
 
-# Install Verilog extension:
-code --install-extension mshr-h.VerilogHDL</code></pre>
-        <p class="small">Gives you:</p>
-        <ul class="tiny">
-          <li>Syntax highlighting for .v files</li>
-          <li>Auto-complete for Verilog keywords</li>
-          <li>Live linting (uses iverilog as backend)</li>
-          <li>Snippets for module, always, etc.</li>
+<!-- NEW SLIDE: Standard Cell Libraries -->
+<section>
+  <h2>Standard Cell Libraries</h2>
+  <div class="two-col">
+    <div>
+      <div class="box box-blue">
+        <h3>What is a Standard Cell?</h3>
+        <p class="small">A <strong>pre-designed, pre-characterized</strong> logic gate. Each cell has a known:</p>
+        <ul class="small">
+          <li><strong>Function</strong> (NAND, NOR, DFF, MUX...)</li>
+          <li><strong>Area</strong> (in square microns)</li>
+          <li><strong>Delay</strong> (propagation time)</li>
+          <li><strong>Power</strong> (energy consumption)</li>
         </ul>
       </div>
     </div>
     <div>
       <div class="box box-green">
-        <h3>Configure Linting</h3>
-        <p class="small">In VS Code settings (Ctrl+,):</p>
-        <pre><code class="language-json" style="font-size: 0.75em;">{
-  "verilog.linting.linter": "iverilog",
-  "verilog.linting.iverilog.arguments":
-    "-g2012 -Wall"
-}</code></pre>
-        <p class="small">Now VS Code shows errors <strong>as you type</strong> — red squiggles on syntax errors, warnings on unused signals.</p>
+        <h3>Example Cells</h3>
+        <table style="font-size: 0.55em;">
+          <tr><th>Cell</th><th>Type</th></tr>
+          <tr><td>NAND2</td><td>2-input NAND gate</td></tr>
+          <tr><td>NOR2</td><td>2-input NOR gate</td></tr>
+          <tr><td>DFF</td><td>D Flip-Flop (1-bit memory)</td></tr>
+          <tr><td>MUX2</td><td>2:1 Multiplexer</td></tr>
+          <tr><td>INV</td><td>Inverter (NOT gate)</td></tr>
+          <tr><td>XOR2</td><td>2-input XOR gate</td></tr>
+        </table>
       </div>
-      <div class="box small" style="margin-top: 8px;">
-        <p><strong>Alternatives:</strong> Sublime Text, Vim/Neovim (with verilog plugin), or just use EDA Playground in the browser.</p>
+    </div>
+  </div>
+  <div class="box small" style="margin-top: 8px;">
+    <p>The <strong>IHP SG13G2</strong> library has approximately <strong>84 standard cells</strong>. These include basic gates (NAND, NOR), complex gates (AND-OR-INV), flip-flops, and multiplexers. Yosys picks the best combination to implement your design.</p>
+  </div>
+</section>
+
+<section>
+  <h2>Synthesis: Verilog -> Gates</h2>
+  <pre><code class="language-bash">$ make synth
+========== Synthesis (IHP SG13G2) ==========
+
+   Number of wires:                212
+   Number of wire bits:            534
+   Number of cells:                194
+
+   Chip area for module: 2677.305600 um2</code></pre>
+  <div class="two-col">
+    <div class="box">
+      <p class="small"><strong>What Yosys does:</strong></p>
+      <ol class="small">
+        <li>Reads your Verilog</li>
+        <li>Maps <code>if/case</code> to MUXes</li>
+        <li>Maps <code>+</code> to full adders</li>
+        <li>Maps <code>always @(posedge)</code> to DFFs</li>
+        <li>Optimizes and maps to IHP cells</li>
+      </ol>
+    </div>
+    <div class="box">
+      <p class="small"><strong>Result:</strong></p>
+      <ul class="small">
+        <li>194 standard cells</li>
+        <li>20 flip-flops</li>
+        <li>174 logic gates</li>
+        <li>2,677 um2 area</li>
+        <li>~15% of tile utilized</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>IHP SG13G2 Standard Cells</h2>
+  <p class="small">Our CPU uses 22 different cell types from the IHP library:</p>
+  <div class="two-col">
+    <div>
+      <table style="font-size: 0.48em;">
+        <tr><th>Cell</th><th>Count</th><th>Function</th></tr>
+        <tr><td>sg13g2_dfrbpq_1</td><td>20</td><td>D Flip-Flop</td></tr>
+        <tr><td>sg13g2_nor2_1</td><td>17</td><td>2-input NOR</td></tr>
+        <tr><td>sg13g2_o21ai_1</td><td>15</td><td>OR-AND-INV</td></tr>
+        <tr><td>sg13g2_nand2_1</td><td>15</td><td>2-input NAND</td></tr>
+        <tr><td>sg13g2_a22oi_1</td><td>15</td><td>AND-OR-INV</td></tr>
+        <tr><td>sg13g2_nand3_1</td><td>14</td><td>3-input NAND</td></tr>
+        <tr><td>sg13g2_inv_1</td><td>14</td><td>Inverter</td></tr>
+        <tr><td>sg13g2_and2_1</td><td>10</td><td>2-input AND</td></tr>
+        <tr><td>sg13g2_a21oi_1</td><td>10</td><td>AND-OR-INV</td></tr>
+        <tr><td>sg13g2_nor4_1</td><td>9</td><td>4-input NOR</td></tr>
+        <tr><td>sg13g2_nand2b_1</td><td>9</td><td>NAND (inv input)</td></tr>
+      </table>
+    </div>
+    <div>
+      <table style="font-size: 0.48em;">
+        <tr><th>Cell</th><th>Count</th><th>Function</th></tr>
+        <tr><td>sg13g2_mux2_1</td><td>8</td><td>2:1 MUX</td></tr>
+        <tr><td>sg13g2_xnor2_1</td><td>6</td><td>2-input XNOR</td></tr>
+        <tr><td>sg13g2_nor3_1</td><td>6</td><td>3-input NOR</td></tr>
+        <tr><td>sg13g2_nand4_1</td><td>6</td><td>4-input NAND</td></tr>
+        <tr><td>sg13g2_a221oi_1</td><td>5</td><td>AND-AND-OR-INV</td></tr>
+        <tr><td>sg13g2_xor2_1</td><td>4</td><td>2-input XOR</td></tr>
+        <tr><td>sg13g2_nor2b_1</td><td>4</td><td>NOR (inv input)</td></tr>
+        <tr><td>sg13g2_nand3b_1</td><td>3</td><td>3-NAND (inv)</td></tr>
+        <tr><td>sg13g2_or2_1</td><td>2</td><td>2-input OR</td></tr>
+        <tr><td>sg13g2_and4_1</td><td>1</td><td>4-input AND</td></tr>
+        <tr><td>sg13g2_and3_1</td><td>1</td><td>3-input AND</td></tr>
+      </table>
+      <p class="tiny" style="margin-top: 8px;"><strong>Total: 194 cells</strong></p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Gate-Level Verification</h2>
+  <pre><code class="language-bash">$ make test_gl
+========== Gate-Level Simulation (IHP SG13G2) ==========
+
+  ...same 51 tests...
+
+  RESULTS: 51 / 51 passed
+  ALL TESTS PASSED</code></pre>
+  <div class="box">
+    <p class="small"><strong>Why gate-level sim matters:</strong></p>
+    <ul class="small">
+      <li>RTL sim tests your <em>design intent</em></li>
+      <li>Gate-level sim tests the <em>actual netlist</em> that goes to silicon</li>
+      <li>Catches synthesis tool bugs, timing issues, optimization errors</li>
+      <li>51/51 PASS at both levels = high confidence</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <h2>TinyTapeout Submission</h2>
+  <ol>
+    <li class="fragment">
+      Fork the <a href="https://github.com/TinyTapeout/ttihp-verilog-template">TinyTapeout IHP template</a>
+    </li>
+    <li class="fragment">
+      Copy your source files:
+      <pre><code class="language-bash">cp src/project.v src/cpu_core.v src/config.json -> src/
+cp info.yaml -> info.yaml</code></pre>
+    </li>
+    <li class="fragment">
+      Push to GitHub -> <strong>CI runs automatically</strong>
+      <ul class="small">
+        <li>OpenLane synthesizes, places, and routes</li>
+        <li>DRC checks pass</li>
+        <li>GDS file generated</li>
+      </ul>
+    </li>
+    <li class="fragment">
+      Submit at <a href="https://app.tinytapeout.com">app.tinytapeout.com</a>
+    </li>
+    <li class="fragment">
+      <span class="highlight-green"><strong>Wait for your chip to arrive!</strong></span>
+    </li>
+  </ol>
+</section>
+<!-- ============================================================ -->
+<!-- PART 6: THE NIBBLE CPU -->
+<!-- ============================================================ -->
+<section class="section-slide">
+  <h1>Part 6</h1>
+  <h2>The Nibble CPU — Putting It All Together</h2>
+</section>
+
+<section>
+  <h2>What is a CPU?</h2>
+  <div class="two-col">
+    <div>
+      <p>A CPU is a machine that:</p>
+      <ol>
+        <li class="fragment"><span class="highlight-blue">FETCH</span> — reads an instruction from memory</li>
+        <li class="fragment"><span class="highlight-green">DECODE</span> — figures out what to do</li>
+        <li class="fragment"><span class="highlight-yellow">EXECUTE</span> — does the operation</li>
+        <li class="fragment"><span class="highlight-red">REPEAT</span> — moves to next instruction</li>
+      </ol>
+    </div>
+    <div class="fragment">
+      <div class="box">
+        <p class="small">Our CPU does this in <strong>2 clock cycles</strong>:</p>
+        <pre><code>Cycle 1: FETCH + DECODE
+Cycle 2: EXECUTE
+
+-> 500,000 instructions/sec @ 1 MHz</code></pre>
       </div>
     </div>
   </div>
 </section>
 
 <section>
-  <h2>Verify Your Setup</h2>
-  <p class="small">Run these commands <strong>one by one</strong>. Each one tests a specific tool:</p>
-  <pre><code class="language-bash" style="font-size: 0.52em;"># ── Step 1: Check tools are installed ──
-iverilog -V 2>&1 | head -1       # expect: "Icarus Verilog version 1x.x"
-yosys --version                   # expect: "Yosys 0.xx"
-ls ~/IHP-Open-PDK/ihp-sg13g2/    # expect: libs.ref  libs.tech  ...
-
-# ── Step 2: Clone the project ──
-git clone https://github.com/fidel-makatia/Tinytapeout_4bitCPU.git
-cd Tinytapeout_4bitCPU
-
-# ── Step 3: RTL simulation (tests iverilog) ──
-make test                         # expect: "51 / 51 passed — ALL TESTS PASSED"
-
-# ── Step 4: Synthesis (tests yosys + IHP PDK) ──
-IHP_PDK=~/IHP-Open-PDK make synth  # expect: "Number of cells: 194"
-
-# ── Step 5: Gate-level simulation (tests everything together) ──
-IHP_PDK=~/IHP-Open-PDK make test_gl  # expect: "51 / 51 passed — ALL TESTS PASSED"
-
-# ── Step 6: Waveform viewer (tests GTKWave) ──
-make test                         # generates tb.vcd
-make wave                         # should open GTKWave window</code></pre>
-  <div class="box box-green small">
-    <p><strong>All 6 steps pass?</strong> You're ready for the workshop!</p>
-    <p><strong>Step 3 fails?</strong> iverilog not installed. &nbsp; <strong>Step 4 fails?</strong> yosys or IHP PDK path wrong. &nbsp; <strong>Step 5 fails?</strong> Check IHP_PDK path.</p>
+  <h2>Why 4 Bits?</h2>
+  <div class="two-col">
+    <div>
+      <ul>
+        <li>Small enough to <strong>fully understand</strong></li>
+        <li>Can count <span class="highlight-blue">0 to 15</span></li>
+        <li>Only <span class="highlight-green">194 standard cells</span></li>
+        <li>Fits in <span class="highlight-yellow">15%</span> of a TinyTapeout tile</li>
+        <li>Same principles as a real 64-bit CPU!</li>
+      </ul>
+    </div>
+    <div>
+      <div class="box">
+        <p class="small"><strong>The constraint:</strong></p>
+        <ul class="small">
+          <li>TinyTapeout tile: 167 x 108 um</li>
+          <li>Max ~1000 standard cells</li>
+          <li>IHP SG13G2 130nm PDK</li>
+          <li>8 inputs, 8 outputs, 8 bidirectional</li>
+        </ul>
+      </div>
+    </div>
   </div>
 </section>
 
 <section>
-  <h2>Docker Setup (All Platforms)</h2>
-  <p class="small">Docker gives you a <strong>complete, pre-configured environment</strong> — no manual installs needed. This is the recommended option if you want to run the full OpenLane Place &amp; Route flow.</p>
+  <h2>Architecture at a Glance</h2>
+  <div class="box">
+    <table>
+      <tr><th>Feature</th><th>Nibble CPU</th></tr>
+      <tr><td>Architecture</td><td>Harvard (separate code &amp; data)</td></tr>
+      <tr><td>Data width</td><td>4 bits</td></tr>
+      <tr><td>Instruction width</td><td>8 bits (4 opcode + 4 immediate)</td></tr>
+      <tr><td>Registers</td><td>Accumulator (A), Program Counter (PC), Instruction Register (IR)</td></tr>
+      <tr><td>Flags</td><td>Carry (C), Zero (Z)</td></tr>
+      <tr><td>Instructions</td><td>16 (see ISA table)</td></tr>
+      <tr><td>Address space</td><td>16 locations (4-bit PC)</td></tr>
+      <tr><td>Pipeline</td><td>2-cycle fetch-execute</td></tr>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>Block Diagram</h2>
+  <pre><code class="language-plaintext" style="font-size: 0.85em;">                    TinyTapeout IHP Chip
+  +------------------------------------------------------+
+  |  ui_in[7:0] ----------------------+                   |
+  |  (instruction)        |                              |
+  |                   +-------+    +------------+        |
+  |                   |  IR   |---+|  OPCODE    |        |
+  |                   | 8-bit |    |  DECODER   |        |
+  |                   +-------+    +------+-----+        |
+  |                                      | control       |
+  |                   +-------+    +-----+----+          |
+  |  uio[7:4] ------+|  MUX  |---+|   ALU    |          |
+  |  (input port)     | 4-bit |    |  4-bit   |          |
+  |                   +-------+    +--+---+---+          |
+  |                   +--------+      |   |              |
+  |                   |  ACC   |&lt;-----+   |flags         |
+  |                   | 4-bit  |----------+---> uo_out   |
+  |                   +--------+     +----+----+         |
+  |                   +--------+     | BRANCH  |         |
+  |                   |   PC   |&lt;----| LOGIC   |         |
+  |                   | 4-bit  |     +---------+         |
+  |                   +---+----+                         |
+  |                       +---------------------> uio[3:0]|
+  +------------------------------------------------------+</code></pre>
+</section>
+
+<section>
+  <h2>Instruction Set Architecture</h2>
+  <p class="small">8-bit instruction: <code>[7:4] = opcode</code>, <code>[3:0] = immediate/address</code></p>
+  <table style="font-size: 0.55em;">
+    <tr><th>Opcode</th><th>Hex</th><th>Mnemonic</th><th>Operation</th><th>Flags</th></tr>
+    <tr><td>0000</td><td>0x0</td><td>NOP</td><td>No operation</td><td>--</td></tr>
+    <tr><td>0001</td><td>0x1</td><td>LDI imm</td><td>A = imm</td><td>Z</td></tr>
+    <tr><td>0010</td><td>0x2</td><td>ADD imm</td><td>A = A + imm</td><td>C, Z</td></tr>
+    <tr><td>0011</td><td>0x3</td><td>SUB imm</td><td>A = A - imm</td><td>C, Z</td></tr>
+    <tr><td>0100</td><td>0x4</td><td>AND imm</td><td>A = A &amp; imm</td><td>Z</td></tr>
+    <tr><td>0101</td><td>0x5</td><td>OR imm</td><td>A = A | imm</td><td>Z</td></tr>
+    <tr><td>0110</td><td>0x6</td><td>XOR imm</td><td>A = A ^ imm</td><td>Z</td></tr>
+    <tr><td>0111</td><td>0x7</td><td>NOT</td><td>A = ~A</td><td>Z</td></tr>
+    <tr><td>1000</td><td>0x8</td><td>SHL</td><td>{C,A} = {A[3], A&lt;&lt;1}</td><td>C, Z</td></tr>
+    <tr><td>1001</td><td>0x9</td><td>SHR</td><td>{A,C} = {A&gt;&gt;1, A[0]}</td><td>C, Z</td></tr>
+    <tr><td>1010</td><td>0xA</td><td>JMP addr</td><td>PC = addr</td><td>--</td></tr>
+    <tr><td>1011</td><td>0xB</td><td>JZ addr</td><td>if Z: PC = addr</td><td>--</td></tr>
+    <tr><td>1100</td><td>0xC</td><td>JC addr</td><td>if C: PC = addr</td><td>--</td></tr>
+    <tr><td>1101</td><td>0xD</td><td>JNZ addr</td><td>if !Z: PC = addr</td><td>--</td></tr>
+    <tr><td>1110</td><td>0xE</td><td>IN</td><td>A = input_port</td><td>Z</td></tr>
+    <tr><td>1111</td><td>0xF</td><td>HLT</td><td>Halt CPU</td><td>--</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>Instruction Encoding</h2>
+  <div class="two-col">
+    <div>
+      <pre><code class="language-plaintext">  8-bit instruction word
+  +------------------------+
+  | 7  6  5  4 | 3  2  1  0|
+  |   OPCODE   | IMMEDIATE |
+  +------------+-----------+
+
+  Example: ADD 5
+  Opcode = 0010 (ADD)
+  Imm    = 0101 (5)
+
+  Binary: 0010 0101
+  Hex:    0x25</code></pre>
+    </div>
+    <div>
+      <div class="box">
+        <p><strong>Encode these:</strong></p>
+        <ol class="small">
+          <li>LDI 7 -> <span class="fragment highlight-green">0001 0111 = 0x17</span></li>
+          <li>SUB 3 -> <span class="fragment highlight-green">0011 0011 = 0x33</span></li>
+          <li>JMP 0 -> <span class="fragment highlight-green">1010 0000 = 0xA0</span></li>
+          <li>HLT   -> <span class="fragment highlight-green">1111 0000 = 0xF0</span></li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Register File: 20 Flip-Flops</h2>
+  <p class="small">All CPU state is stored in D flip-flops with async active-low reset</p>
+  <pre><code class="language-plaintext">  +----------------------------------------------+
+  |            REGISTER FILE (20 DFFs)           |
+  |                                              |
+  |  ACC[3:0]    4 x DFF --> uo_out[3:0]        |
+  |  PC[3:0]     4 x DFF --> uio_out[3:0]       |
+  |  IR[7:0]     8 x DFF     (internal)         |
+  |  carry       1 x DFF --> uo_out[4]           |
+  |  zero        1 x DFF --> uo_out[5]           |
+  |  halted      1 x DFF --> uo_out[6]           |
+  |  phase       1 x DFF --> uo_out[7]           |
+  |                                              |
+  |  Total: 4+4+8+1+1+1+1 = 20 flip-flops      |
+  +----------------------------------------------+
+
+  Each DFF: +---------+
+            |  D    Q |---> output
+            | CLK   --|<--- clk
+            | RST_B --|<--- rst_n (Q=0 when RST_B=0)
+            +---------+</code></pre>
+</section>
+
+<section>
+  <h2>Fetch-Execute FSM</h2>
+  <div class="two-col">
+    <div>
+      <pre><code class="language-plaintext">  +---------+       +-------------+
+  |  FETCH  |------+|  EXECUTE    |
+  | phase=0 |       |  phase=1    |
+  |         |&lt;------|             |
+  +---------+       +-------------+
+
+  FETCH (phase=0):
+   IR &lt;= ui_in[7:0]
+   phase &lt;= 1
+
+  EXECUTE (phase=1):
+   ACC   &lt;= ALU result
+   PC    &lt;= next_pc
+   carry &lt;= next_carry
+   zero  &lt;= next_zero
+   phase &lt;= 0</code></pre>
+    </div>
+    <div>
+      <pre><code class="language-plaintext">Timing Diagram:
+
+clk   /\__/\__/\__/\__/\__/\__
+phase __0____1____0____1____0__
+action FETCH EXEC  FETCH EXEC
+        instr0      instr1
+PC out  0           1
+ACC     ----  res0  ---- res1</code></pre>
+      <div class="box small">
+        <p>Only <strong>1 flip-flop</strong> controls the entire pipeline!</p>
+        <p><code>phase = 0</code> -> Fetch<br><code>phase = 1</code> -> Execute</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>The ALU</h2>
+  <pre><code class="language-plaintext">  +---------------------------------------------+
+  |                  4-BIT ALU                   |
+  |                                              |
+  |  ACC[3:0] --->+------+                       |
+  |              | ADDER|---> sum[3:0]  --+      |
+  |  imm[3:0] --->|      |---> cout      --+      |
+  |              +------+                |      |
+  |  ACC ---> AND ---> and[3:0] --------+      |
+  |  imm ---> AND                        |      |
+  |                                +----+----+ |
+  |  ACC ---> OR  ---> or[3:0]  --->| RESULT  | |
+  |  ACC ---> XOR ---> xor[3:0] --->|  MUX    |-> next_acc
+  |  ACC ---> NOT ---> not[3:0] --->|(opcode) |-> next_carry
+  |  ACC ---> SHL ---> shl[3:0] --->|         |-> next_zero
+  |  ACC ---> SHR ---> shr[3:0] --->|         | |
+  |  port_in ------> in[3:0]  --->|         | |
+  |  imm ---------> ldi[3:0] --->|         | |
+  |                                +---------+ |
+  |  Zero detect: NOR(result[3:0]) ---> Z      |
+  +---------------------------------------------+</code></pre>
+</section>
+
+<section>
+  <h2>Full Adder -- Gate Level</h2>
+  <div class="two-col">
+    <div>
+      <pre><code class="language-plaintext">  Full Adder (1-bit):
+
+  A --+-->XOR--+-->XOR---> Sum
+  B --+        |    ^
+               |   Cin
+  A --+-->AND--+
+  B --+        +-->OR ---> Cout
+  Cin-+-->AND--+
+  A^B-+
+
+  4-bit Ripple Carry Adder:
+
+  +----+  +----+  +----+  +----+
+  | FA |--| FA |--| FA |--| FA |->Cout
+  |[0] |  |[1] |  |[2] |  |[3] |
+  +--+-+  +--+-+  +--+-+  +--+-+
+     v       v       v       v
+  sum[0]  sum[1]  sum[2]  sum[3]</code></pre>
+    </div>
+    <div>
+      <div class="box">
+        <h3>Truth Table</h3>
+        <table style="font-size: 0.55em;">
+          <tr><th>A</th><th>B</th><th>Cin</th><th>Sum</th><th>Cout</th></tr>
+          <tr><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+          <tr><td>0</td><td>0</td><td>1</td><td>1</td><td>0</td></tr>
+          <tr><td>0</td><td>1</td><td>0</td><td>1</td><td>0</td></tr>
+          <tr><td>0</td><td>1</td><td>1</td><td>0</td><td>1</td></tr>
+          <tr><td>1</td><td>0</td><td>0</td><td>1</td><td>0</td></tr>
+          <tr><td>1</td><td>0</td><td>1</td><td>0</td><td>1</td></tr>
+          <tr><td>1</td><td>1</td><td>0</td><td>0</td><td>1</td></tr>
+          <tr><td>1</td><td>1</td><td>1</td><td>1</td><td>1</td></tr>
+        </table>
+        <p class="tiny" style="margin-top:8px;">Sum = A XOR B XOR Cin<br>Cout = (A AND B) OR (Cin AND (A XOR B))</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Branch Logic</h2>
+  <pre><code class="language-plaintext">  +-------------------------------------------+
+  |             BRANCH LOGIC                  |
+  |                                           |
+  |   is_JMP ----------------------->OR--+    |
+  |                                   |       |
+  |   is_JZ  --->AND--+              |       |
+  |   zero ---->AND--+-------------->OR--+   |
+  |                                       |   |
+  |   is_JC  --->AND--+                  |   |
+  |   carry --->AND--+------------------>OR--+
+  |                                           |
+  |   is_JNZ --->AND--+                      |
+  |   ~zero --->AND--+----------------------+
+  |                               take_branch |
+  |                                           v
+  |   +-----------+            +--------------+
+  |   |  PC + 1   |---------->|    MUX       |--> next_pc
+  |   +-----------+            | 0: PC+1      |
+  |                            | 1: imm[3:0]  |
+  |   imm[3:0] ------------->| sel: branch  |
+  |                            +--------------+
+  +-------------------------------------------+</code></pre>
+</section>
+
+<section>
+  <h2>The Verilog -- cpu_core.v</h2>
+  <pre><code class="language-verilog" style="font-size: 0.48em;">module cpu_core (
+    input  wire       clk,
+    input  wire       rst_n,
+    input  wire [7:0] instr_data,   // from external program memory
+    input  wire [3:0] port_in,      // 4-bit input port
+    output wire [3:0] pc_out,       // program counter -> address bus
+    output wire [3:0] acc_out,      // accumulator -> visible result
+    output wire       carry_out, zero_out, halted_out, phase_out
+);
+    // State
+    reg [3:0] acc, pc;
+    reg [7:0] ir;
+    reg       carry, zero, halted, phase;
+
+    // Decode
+    wire [3:0] opcode = ir[7:4];
+    wire [3:0] imm    = ir[3:0];
+
+    // ALU (combinational) -- computes ALL results, MUX selects
+    always @(*) begin
+        case (opcode)
+            4'h1: {next_carry, next_acc} = {carry, imm};          // LDI
+            4'h2: {next_carry, next_acc} = acc + imm;             // ADD
+            4'h3: {next_carry, next_acc} = acc - imm;             // SUB
+            4'h4: {next_carry, next_acc} = {carry, acc & imm};    // AND
+            // ... OR, XOR, NOT, SHL, SHR, IN ...
+        endcase
+    end
+
+    // FSM (sequential)
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            acc&lt;=0; pc&lt;=0; ir&lt;=0; carry&lt;=0; zero&lt;=0; halted&lt;=0; phase&lt;=0;
+        end else if (!halted) begin
+            if (phase == 0) begin ir &lt;= instr_data; phase &lt;= 1; end
+            else begin acc&lt;=next_acc; pc&lt;=next_pc; /*...*/ phase&lt;=0; end
+        end
+    end
+endmodule</code></pre>
+  <p class="small">Full source: <code>src/cpu_core.v</code> (219 lines)</p>
+</section>
+
+<section>
+  <h2>TinyTapeout Wrapper</h2>
+  <pre><code class="language-verilog" style="font-size: 0.52em;">module tt_um_fidel_makatia_4bit_cpu (
+    input  wire       clk,        // System clock
+    input  wire       rst_n,      // Active-low reset
+    input  wire       ena,        // Design enable
+    input  wire [7:0] ui_in,      // 8 input pins  -> instruction word
+    output wire [7:0] uo_out,     // 8 output pins -> acc + flags
+    input  wire [7:0] uio_in,     // Bidir input   -> input port [7:4]
+    output wire [7:0] uio_out,    // Bidir output  -> program counter [3:0]
+    output wire [7:0] uio_oe      // Bidir enable  -> 0x0F (lower = output)
+);
+    cpu_core core (
+        .clk(clk), .rst_n(rst_n),
+        .instr_data(ui_in),              // instruction from pins
+        .port_in(uio_in[7:4]),           // input port (upper nibble)
+        .pc_out(uio_out[3:0]),           // PC -> lower nibble out
+        .acc_out(uo_out[3:0]),           // accumulator -> output
+        .carry_out(uo_out[4]),           // flags on remaining bits
+        .zero_out(uo_out[5]),
+        .halted_out(uo_out[6]),
+        .phase_out(uo_out[7])
+    );
+    assign uio_oe = 8'b0000_1111;       // lower 4 = output, upper 4 = input
+    assign uio_out[7:4] = 4'b0000;
+endmodule</code></pre>
+</section>
+
+<section>
+  <h2>TinyTapeout Pin Mapping</h2>
   <div class="two-col">
     <div>
       <div class="box box-blue">
-        <h3>1. Install Docker</h3>
-        <pre><code class="language-bash"># macOS / Windows:
-# Download Docker Desktop from:
-# https://www.docker.com/products/docker-desktop/
-# Install and start it.
-
-# Linux (Ubuntu/Debian):
-sudo apt update
-sudo apt install -y docker.io
-sudo usermod -aG docker $USER
-# Log out and log back in</code></pre>
+        <h3>Inputs (ui_in)</h3>
+        <table style="font-size: 0.5em;">
+          <tr><th>Pin</th><th>Signal</th></tr>
+          <tr><td>ui_in[7]</td><td>Opcode MSB</td></tr>
+          <tr><td>ui_in[6]</td><td>Opcode bit 6</td></tr>
+          <tr><td>ui_in[5]</td><td>Opcode bit 5</td></tr>
+          <tr><td>ui_in[4]</td><td>Opcode LSB</td></tr>
+          <tr><td>ui_in[3]</td><td>Immediate MSB</td></tr>
+          <tr><td>ui_in[2]</td><td>Immediate bit 2</td></tr>
+          <tr><td>ui_in[1]</td><td>Immediate bit 1</td></tr>
+          <tr><td>ui_in[0]</td><td>Immediate LSB</td></tr>
+        </table>
       </div>
     </div>
     <div>
       <div class="box box-green">
-        <h3>2. Verify Docker</h3>
-        <pre><code class="language-bash"># Check Docker is running:
-docker --version
-docker run hello-world
-
-# Should print:
-# "Hello from Docker!"</code></pre>
+        <h3>Outputs (uo_out)</h3>
+        <table style="font-size: 0.5em;">
+          <tr><th>Pin</th><th>Signal</th></tr>
+          <tr><td>uo_out[3:0]</td><td>Accumulator (result)</td></tr>
+          <tr><td>uo_out[4]</td><td>Carry flag</td></tr>
+          <tr><td>uo_out[5]</td><td>Zero flag</td></tr>
+          <tr><td>uo_out[6]</td><td>Halted</td></tr>
+          <tr><td>uo_out[7]</td><td>Phase (fetch/exec)</td></tr>
+        </table>
+      </div>
+      <div class="box" style="border-color: #d29922;">
+        <h3>Bidirectional (uio)</h3>
+        <table style="font-size: 0.5em;">
+          <tr><th>Pin</th><th>Dir</th><th>Signal</th></tr>
+          <tr><td>uio[3:0]</td><td>OUT</td><td>Program Counter</td></tr>
+          <tr><td>uio[7:4]</td><td>IN</td><td>Input port</td></tr>
+        </table>
       </div>
     </div>
   </div>
 </section>
 
 <section>
-  <h2>Docker: Run OpenLane PnR</h2>
-  <p class="small">The full Place &amp; Route flow runs inside a Docker container. This is what TinyTapeout's GitHub CI does — you can also run it locally.</p>
-  <pre><code class="language-bash"># Pull the TinyTapeout IHP OpenLane image
-docker pull ghcr.io/tinytapeout/openlane2:latest
-
-# Clone the TinyTapeout IHP template
-git clone https://github.com/TinyTapeout/ttihp-verilog-template.git
-cd ttihp-verilog-template
-
-# Copy your design files into the template
-cp /path/to/Tinytapeout_4bitCPU/src/project.v src/
-cp /path/to/Tinytapeout_4bitCPU/src/cpu_core.v src/
-cp /path/to/Tinytapeout_4bitCPU/src/config.json src/
-cp /path/to/Tinytapeout_4bitCPU/info.yaml .
-
-# Run the full hardening flow (synthesis → PnR → GDS)
-docker run --rm -v $(pwd):/work -w /work \
-  ghcr.io/tinytapeout/openlane2:latest \
-  python -m openlane --run-tag run1 src/config.json</code></pre>
-  <div class="box small">
-    <p><strong>Output:</strong> <code>runs/run1/final/gds/</code> — your physical layout file ready for fabrication!</p>
-    <p>Docker works identically on <span class="highlight-blue">macOS</span>, <span class="highlight-green">Linux</span>, and <span class="highlight-yellow">Windows</span>.</p>
+  <h2>Example: Counter Program</h2>
+  <div class="two-col">
+    <div>
+      <table style="font-size: 0.6em;">
+        <tr><th>Addr</th><th>Hex</th><th>Binary</th><th>ASM</th><th>What it does</th></tr>
+        <tr><td>0x0</td><td>0x10</td><td>0001 0000</td><td>LDI 0</td><td>A = 0</td></tr>
+        <tr><td>0x1</td><td>0x21</td><td>0010 0001</td><td>ADD 1</td><td>A = A + 1</td></tr>
+        <tr><td>0x2</td><td>0xD1</td><td>1101 0001</td><td>JNZ 1</td><td>Loop if A != 0</td></tr>
+        <tr><td>0x3</td><td>0xF0</td><td>1111 0000</td><td>HLT</td><td>Stop</td></tr>
+      </table>
+    </div>
+    <div class="fragment">
+      <div class="box">
+        <p class="small"><strong>Execution trace:</strong></p>
+        <pre><code class="language-plaintext" style="font-size: 0.85em;">A = 0  -> ADD 1 -> A = 1  -> JNZ 1 yes
+A = 1  -> ADD 1 -> A = 2  -> JNZ 1 yes
+A = 2  -> ADD 1 -> A = 3  -> JNZ 1 yes
+...
+A = 14 -> ADD 1 -> A = 15 -> JNZ 1 yes
+A = 15 -> ADD 1 -> A = 0  -> JNZ 1 no
+-> HLT (counts 0->15->0 then stops)</code></pre>
+      </div>
+    </div>
   </div>
 </section>
 
 <section>
-  <h2>Which Setup Should I Use?</h2>
-  <table>
-    <tr><th>Goal</th><th>What to install</th><th>Platform</th></tr>
-    <tr>
-      <td><strong>Just simulate</strong><br><span class="tiny">(RTL testbench only)</span></td>
-      <td>Icarus Verilog + GTKWave</td>
-      <td>macOS, Linux, Windows</td>
-    </tr>
-    <tr>
-      <td><strong>Simulate + Synthesize</strong><br><span class="tiny">(see gate-level results)</span></td>
-      <td>+ Yosys + IHP PDK</td>
-      <td>macOS, Linux, WSL2</td>
-    </tr>
-    <tr>
-      <td><strong>Full PnR flow locally</strong><br><span class="tiny">(generate GDS layout)</span></td>
-      <td>+ Docker + OpenLane</td>
-      <td>macOS, Linux, Windows</td>
-    </tr>
-    <tr>
-      <td><strong>Just submit to TinyTapeout</strong><br><span class="tiny">(let CI do the work)</span></td>
-      <td>Just git + GitHub account!</td>
-      <td>Any</td>
-    </tr>
-  </table>
-  <div class="box small" style="margin-top: 12px;">
-    <p><strong>Recommended for workshop:</strong> Install iverilog + yosys + IHP PDK natively for fast iteration. Use Docker or GitHub CI for the final PnR/GDS step.</p>
+  <h2>Example: Fibonacci</h2>
+  <div class="two-col">
+    <div>
+      <table style="font-size: 0.6em;">
+        <tr><th>Addr</th><th>Hex</th><th>ASM</th><th>ACC</th></tr>
+        <tr><td>0x0</td><td>0x10</td><td>LDI 0</td><td>0</td></tr>
+        <tr><td>0x1</td><td>0x21</td><td>ADD 1</td><td>1</td></tr>
+        <tr><td>0x2</td><td>0x20</td><td>ADD 0</td><td>1</td></tr>
+        <tr><td>0x3</td><td>0x21</td><td>ADD 1</td><td>2</td></tr>
+        <tr><td>0x4</td><td>0x21</td><td>ADD 1</td><td>3</td></tr>
+        <tr><td>0x5</td><td>0x22</td><td>ADD 2</td><td>5</td></tr>
+        <tr><td>0x6</td><td>0x23</td><td>ADD 3</td><td>8</td></tr>
+        <tr><td>0x7</td><td>0x25</td><td>ADD 5</td><td>13</td></tr>
+        <tr><td>0x8</td><td>0xF0</td><td>HLT</td><td>--</td></tr>
+      </table>
+    </div>
+    <div>
+      <div class="box">
+        <p class="small"><strong>Sequence:</strong> 0, 1, 1, 2, 3, 5, 8, <span class="highlight-green">13</span></p>
+        <p class="small">Since we only have an accumulator (no second register), each ADD uses an immediate. This means we "hardcode" the previous Fibonacci number as the immediate operand.</p>
+        <p class="small fragment"><strong>Challenge:</strong> Can you write a looping Fibonacci using the IN instruction to provide the second operand?</p>
+      </div>
+    </div>
   </div>
 </section>
 
-<!-- ============================================================ -->
+<section>
+  <h2>Example: Shift &amp; Carry</h2>
+  <table>
+    <tr><th>Addr</th><th>Hex</th><th>ASM</th><th>ACC (binary)</th><th>C</th><th>Z</th></tr>
+    <tr><td>0x0</td><td>0x11</td><td>LDI 1</td><td>0001</td><td>0</td><td>0</td></tr>
+    <tr class="fragment"><td>0x1</td><td>0x80</td><td>SHL</td><td>0010</td><td>0</td><td>0</td></tr>
+    <tr class="fragment"><td>0x2</td><td>0x80</td><td>SHL</td><td>0100</td><td>0</td><td>0</td></tr>
+    <tr class="fragment"><td>0x3</td><td>0x80</td><td>SHL</td><td>1000</td><td>0</td><td>0</td></tr>
+    <tr class="fragment"><td>0x4</td><td>0x80</td><td>SHL</td><td class="highlight-red">0000</td><td class="highlight-yellow">1</td><td class="highlight-yellow">1</td></tr>
+    <tr class="fragment"><td>0x5</td><td>0xF0</td><td>HLT</td><td>--</td><td>--</td><td>--</td></tr>
+  </table>
+  <p class="fragment small">The MSB "falls off" into the <span class="highlight-yellow">carry flag</span>!</p>
+</section>
+
+<section>
+  <h2>Running the Testbench</h2>
+  <pre><code class="language-bash">$ make test
+========== RTL Simulation ==========
+
+========== Test 1: Basic ALU ==========
+  PASS: LDI 5 -- acc=5, Z=0
+  PASS: ADD 3 -- acc=8
+  PASS: SUB 2 -- acc=6
+  PASS: AND f -- acc=6
+  ...
+
+========== Test 4: Counter ==========
+  PASS: Counter step 0 -- acc=1
+  PASS: Counter step 1 -- acc=2
+  ...
+  PASS: Counter reached 0 (wrapped), halted
+
+========== Test 6: Input Port ==========
+  PASS: IN -- acc=9, read from port
+
+  RESULTS: 51 / 51 passed
+  ALL TESTS PASSED</code></pre>
+</section>
+
+<section>
+  <h2>CPU Waveform Viewer</h2>
+  <pre><code class="language-bash">$ make wave     # Opens GTKWave with CPU testbench waveforms</code></pre>
+  <div class="box">
+    <pre><code class="language-plaintext" style="font-size: 0.75em;">  CPU Waveform — Counter Program (LDI 0, ADD 1, JNZ 1, HLT):
+  +-------------------------------------------------------------+
+  | Signal     |__/\__/\__/\__/\__/\__/\__/\__/\__/\__|
+  +------------+--------------------------------------------+
+  | clk        | /\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\  |
+  | rst_n      |____/                                      |
+  | phase      |     0  1  0  1  0  1  0  1  0  1        |
+  | pc[3:0]    |     0     1     2     1     2            |
+  | ir[7:0]    |     10    21    D1    21    D1           |
+  | acc[3:0]   |     0     1     1     2     2            |
+  | carry      |     0     0     0     0     0            |
+  | zero       |     1     0     0     0     0            |
+  +------------+--------------------------------------------+</code></pre>
+  </div>
+  <p class="small">Watch the fetch-execute cycle: phase toggles 0/1. PC increments during fetch, ACC updates during execute. JNZ branches back to address 1.</p>
+</section>
+
+<section>
+  <h2>Hands-On: Write Your Own Program!</h2>
+  <div class="box box-blue">
+    <p><strong>Challenge 1:</strong> Write a program that loads 15 and counts DOWN to 0, then halts.</p>
+    <p class="tiny fragment">Hint: SUB 1, then JNZ to loop back, then HLT</p>
+  </div>
+  <div class="box box-green" style="margin-top: 12px;">
+    <p><strong>Challenge 2:</strong> Write a program that reads the input port, doubles it (SHL), and halts.</p>
+    <p class="tiny fragment">Hint: IN, SHL, HLT -- only 3 instructions!</p>
+  </div>
+  <div class="box" style="border-color: #d29922; margin-top: 12px;">
+    <p><strong>Challenge 3:</strong> Write a program that checks if the input is zero. Output 1 if yes, 0 if no.</p>
+    <p class="tiny fragment">Hint: IN, JZ to a LDI 1, otherwise LDI 0, then HLT</p>
+  </div>
+</section>
+
 <!-- HANDS-ON CHALLENGES -->
-<!-- ============================================================ -->
 <section class="section-slide">
   <h1>Hands-On Challenges</h1>
 </section>
@@ -1418,7 +1825,7 @@ docker run --rm -v $(pwd):/work -w /work \
       <tr><th>Addr</th><th>ASM</th><th>Hex</th><th>ACC</th></tr>
       <tr><td>0x0</td><td class="fragment">LDI 5</td><td class="fragment">0x15</td><td class="fragment">0101</td></tr>
       <tr><td>0x1</td><td class="fragment">XOR 15</td><td class="fragment">0x6F</td><td class="fragment">1010</td></tr>
-      <tr><td>0x2</td><td class="fragment">HLT</td><td class="fragment">0xF0</td><td class="fragment">—</td></tr>
+      <tr><td>0x2</td><td class="fragment">HLT</td><td class="fragment">0xF0</td><td class="fragment">--</td></tr>
     </table>
     <p class="tiny fragment">Bonus: XOR with 0xF is the same as NOT! Why does our CPU have both?</p>
   </div>
@@ -1452,70 +1859,70 @@ rom[3] = 8'hF0;   // HLT
     </ul>
     <p class="small" style="margin-top: 12px;">Steps:</p>
     <ol class="small">
-      <li>Edit <code>src/cpu_core.v</code> — add the case in the ALU</li>
+      <li>Edit <code>src/cpu_core.v</code> -- add the case in the ALU</li>
       <li>Add a test in <code>test/tb.v</code></li>
       <li>Run <code>make test</code> to verify RTL</li>
-      <li>Run <code>make synth</code> — check the cell count changed</li>
-      <li>Run <code>make test_gl</code> — verify gate-level too!</li>
+      <li>Run <code>make synth</code> -- check the cell count changed</li>
+      <li>Run <code>make test_gl</code> -- verify gate-level too!</li>
     </ol>
   </div>
 </section>
 
 <!-- ============================================================ -->
-<!-- TESTING ON THE PCB -->
+<!-- PART 7: TESTING ON THE REAL CHIP -->
 <!-- ============================================================ -->
 <section class="section-slide">
-  <h1>Part 5</h1>
+  <h1>Part 7</h1>
   <h2>Testing on the Real Chip</h2>
 </section>
 
 <section>
   <h2>The TinyTapeout Demo Board</h2>
   <p class="small">When your chip comes back from fabrication, it arrives mounted on a <strong>TinyTapeout demo PCB</strong>.</p>
-  <pre><code class="language-plaintext" style="font-size: 0.7em;">  ┌─────────────────────────────────────────────────────────┐
-  │              TinyTapeout Demo Board                     │
-  │                                                         │
-  │   ┌───────────┐         ┌──────────────┐               │
-  │   │           │  SPI    │              │               │
-  │   │  RP2040   │────────►│  YOUR CHIP   │               │
-  │   │  (MCU)    │         │  (ASIC)      │               │
-  │   │           │◄────────│              │               │
-  │   └─────┬─────┘         └──────┬───────┘               │
-  │         │                       │                       │
-  │   ┌─────▼─────┐         ┌──────▼───────┐               │
-  │   │  USB-C    │         │   PMODs      │               │
-  │   │ (power +  │         │  (I/O pins)  │               │
-  │   │  program) │         │              │               │
-  │   └───────────┘         └──────────────┘               │
-  │                                                         │
-  │   [DIP switches]    [7-seg display]    [LED bar]       │
-  └─────────────────────────────────────────────────────────┘</code></pre>
+  <pre><code class="language-plaintext" style="font-size: 0.7em;">  +---------------------------------------------------------+
+  |              TinyTapeout Demo Board                     |
+  |                                                         |
+  |   +-----------+         +--------------+               |
+  |   |           |  SPI    |              |               |
+  |   |  RP2040   |-------->|  YOUR CHIP   |               |
+  |   |  (MCU)    |         |  (ASIC)      |               |
+  |   |           |<--------|              |               |
+  |   +-----+-----+         +------+-------+               |
+  |         |                       |                       |
+  |   +-----+-----+         +------+-------+               |
+  |   |  USB-C    |         |   PMODs      |               |
+  |   | (power +  |         |  (I/O pins)  |               |
+  |   |  program) |         |              |               |
+  |   +-----------+         +--------------+               |
+  |                                                         |
+  |   [DIP switches]    [7-seg display]    [LED bar]       |
+  +---------------------------------------------------------+</code></pre>
 </section>
 
 <section>
   <h2>How the Board Connects to Our CPU</h2>
   <pre><code class="language-plaintext" style="font-size: 0.65em;">                  TinyTapeout Demo Board
-  ┌──────────────────────────────────────────────────────────────┐
-  │                                                              │
-  │  RP2040                          ASIC (your chip)            │
-  │  ┌──────────┐                    ┌─────────────────┐         │
-  │  │          │ ── ui_in[7:0] ───►│ INSTRUCTION     │         │
-  │  │  Drives  │    (8 pins)       │ INPUT           │         │
-  │  │  inputs  │                    │                 │         │
-  │  │  based   │ ◄─ uio[3:0] ─────│ PROGRAM COUNTER │         │
-  │  │  on PC   │    (4 pins)       │ OUTPUT          │         │
-  │  │          │                    │                 │         │
-  │  │  Reads   │ ── uio[7:4] ────►│ INPUT PORT      │         │
-  │  │  outputs │    (4 pins)       │                 │         │
-  │  └──────────┘                    │                 │         │
-  │                                  │                 │         │
-  │  LEDs / 7-seg ◄── uo_out[3:0] ──│ ACCUMULATOR     │         │
-  │  Status LEDs  ◄── uo_out[7:4] ──│ FLAGS           │         │
-  │                                  └─────────────────┘         │
-  │                                                              │
-  │  Clock ─────────────────────────► clk                        │
-  │  Reset button ──────────────────► rst_n                      │
-  └──────────────────────────────────────────────────────────────┘</code></pre>
+  +--------------------------------------------------------------+
+  |                                                              |
+  |  RP2040                          ASIC (your chip)            |
+  |  +----------+                    +-----------------+         |
+  |  |          | -- ui_in[7:0] --->| INSTRUCTION     |         |
+  |  |  Drives  |    (8 pins)       | INPUT           |         |
+  |  |  inputs  |                    |                 |         |
+  |  |  based   | <-- uio[3:0] -----| PROGRAM COUNTER |         |
+  |  |  on PC   |    (4 pins)       | OUTPUT          |         |
+  |  |          |                    |                 |         |
+  |  |  Reads   | -- uio[7:4] ---->| INPUT PORT      |         |
+  |  |  outputs |    (4 pins)       |                 |         |
+  |  +----------+                    |                 |         |
+  |                                  |                 |         |
+  |  LEDs / 7-seg <-- uo_out[3:0] --| ACCUMULATOR     |         |
+  |  Status LEDs  <-- uo_out[7:4] --| FLAGS           |         |
+  |                                  +-----------------+         |
+  |                                                              |
+  |  Clock ---------------------------------> clk                |
+  |  Reset button --------------------------> rst_n              |
+  +--------------------------------------------------------------+</code></pre>
 </section>
 
 <section>
@@ -1526,17 +1933,17 @@ rom[3] = 8'hF0;   // HLT
   </div>
   <pre><code class="language-plaintext" style="font-size: 0.8em;">  The loop (runs every clock cycle):
 
-  ┌─────────┐    PC (4-bit)     ┌──────────┐
-  │  ASIC   │ ─────────────────►│  RP2040  │
-  │  (CPU)  │                    │          │
-  │         │◄──────────────────│ program  │
-  │         │   instruction      │ ROM[]    │
-  └─────────┘    (8-bit)         └──────────┘
+  +---------+    PC (4-bit)     +----------+
+  |  ASIC   | ----------------->|  RP2040  |
+  |  (CPU)  |                    |          |
+  |         |<-------------------|  program |
+  |         |   instruction      | ROM[]    |
+  +---------+    (8-bit)         +----------+
 
-  1. CPU outputs PC on uio[3:0]         → "I need instruction at address 5"
-  2. RP2040 reads PC                     → "Address 5, let me look that up"
-  3. RP2040 writes program[5] to ui_in   → "Here's instruction 0x21 (ADD 1)"
-  4. CPU latches instruction on next clk → executes ADD 1
+  1. CPU outputs PC on uio[3:0]         -> "I need instruction at address 5"
+  2. RP2040 reads PC                     -> "Address 5, let me look that up"
+  3. RP2040 writes program[5] to ui_in   -> "Here's instruction 0x21 (ADD 1)"
+  4. CPU latches instruction on next clk -> executes ADD 1
   5. Repeat!</code></pre>
 </section>
 
@@ -1547,12 +1954,12 @@ rom[3] = 8'hF0;   // HLT
 import time
 
 # Your program! Change this to run different programs.
-# Counter: counts 0→1→2→...→15→0 then halts
+# Counter: counts 0->1->2->...->15->0 then halts
 program = [
-    0x10,  # LDI 0    — load 0 into accumulator
-    0x21,  # ADD 1    — add 1
-    0xD1,  # JNZ 1    — jump to addr 1 if not zero
-    0xF0,  # HLT      — halt
+    0x10,  # LDI 0    -- load 0 into accumulator
+    0x21,  # ADD 1    -- add 1
+    0xD1,  # JNZ 1    -- jump to addr 1 if not zero
+    0xF0,  # HLT      -- halt
     0x00, 0x00, 0x00, 0x00,  # unused addresses (NOP)
     0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00,
@@ -1574,7 +1981,7 @@ def write_instruction(instr):
     for i in range(8):
         ui_pins[i].value((instr >> i) & 1)
 
-# Main loop — act as program memory
+# Main loop -- act as program memory
 while True:
     pc = read_pc()
     instr = program[pc & 0x0F]   # mask to 4 bits (16 addresses)
@@ -1588,7 +1995,7 @@ while True:
   <pre><code class="language-c" style="font-size: 0.52em;">// Flash via Arduino IDE with "Raspberry Pi Pico" board selected
 #include &lt;Arduino.h&gt;
 
-// Your program — Counter (0 → 15 → halt)
+// Your program -- Counter (0 -> 15 -> halt)
 uint8_t program[16] = {
     0x10,  // LDI 0
     0x21,  // ADD 1
@@ -1606,28 +2013,28 @@ const int ACC_PINS[4] = {8, 9, 10, 11};                // uo_out[3:0] (read)
 
 void setup() {
     Serial.begin(115200);
-    for (int i = 0; i < 8; i++) pinMode(UI_PINS[i], OUTPUT);
-    for (int i = 0; i < 4; i++) pinMode(PC_PINS[i], INPUT);
-    for (int i = 0; i < 4; i++) pinMode(ACC_PINS[i], INPUT);
+    for (int i = 0; i &lt; 8; i++) pinMode(UI_PINS[i], OUTPUT);
+    for (int i = 0; i &lt; 4; i++) pinMode(PC_PINS[i], INPUT);
+    for (int i = 0; i &lt; 4; i++) pinMode(ACC_PINS[i], INPUT);
 }
 
 void loop() {
     // 1. Read PC from chip
     uint8_t pc = 0;
-    for (int i = 0; i < 4; i++)
-        pc |= (digitalRead(PC_PINS[i]) << i);
+    for (int i = 0; i &lt; 4; i++)
+        pc |= (digitalRead(PC_PINS[i]) &lt;&lt; i);
 
     // 2. Look up instruction
     uint8_t instr = program[pc & 0x0F];
 
     // 3. Drive instruction to chip
-    for (int i = 0; i < 8; i++)
+    for (int i = 0; i &lt; 8; i++)
         digitalWrite(UI_PINS[i], (instr >> i) & 1);
 
     // 4. (Optional) Print accumulator to serial monitor
     uint8_t acc = 0;
-    for (int i = 0; i < 4; i++)
-        acc |= (digitalRead(ACC_PINS[i]) << i);
+    for (int i = 0; i &lt; 4; i++)
+        acc |= (digitalRead(ACC_PINS[i]) &lt;&lt; i);
     Serial.printf("PC=%d  INSTR=0x%02X  ACC=%d\n", pc, instr, acc);
 }</code></pre>
 </section>
@@ -1648,15 +2055,15 @@ void loop() {
       <p class="tiny">MicroPython: copy .py file &nbsp;|&nbsp; C: flash via Arduino IDE</p>
     </li>
     <li class="fragment">
-      <strong>Press reset</strong> — CPU starts executing!
+      <strong>Press reset</strong> -- CPU starts executing!
       <p class="tiny">The reset button pulls rst_n LOW then releases HIGH</p>
     </li>
     <li class="fragment">
-      <strong>Watch the LEDs</strong> — accumulator value on uo_out[3:0]
-      <p class="tiny">Counter program: LEDs count 0000 → 0001 → 0010 → ... → 1111 → stop</p>
+      <strong>Watch the LEDs</strong> -- accumulator value on uo_out[3:0]
+      <p class="tiny">Counter program: LEDs count 0000 -> 0001 -> 0010 -> ... -> 1111 -> stop</p>
     </li>
     <li class="fragment">
-      <strong>Debug with serial monitor</strong> — see PC, instruction, ACC in real-time
+      <strong>Debug with serial monitor</strong> -- see PC, instruction, ACC in real-time
       <p class="tiny">Open Arduino Serial Monitor or <code>screen /dev/ttyACM0 115200</code></p>
     </li>
   </ol>
@@ -1665,29 +2072,29 @@ void loop() {
 <section>
   <h2>What You'll See: Counter Program</h2>
   <pre><code class="language-plaintext" style="font-size: 0.7em;">  Serial Monitor Output:
-  ─────────────────────────────
-  PC=0  INSTR=0x10  ACC=0       ← LDI 0
-  PC=1  INSTR=0x21  ACC=0       ← fetching ADD 1
-  PC=1  INSTR=0x21  ACC=1       ← executed: A = 0 + 1 = 1
-  PC=2  INSTR=0xD1  ACC=1       ← JNZ 1 (A≠0, branching!)
-  PC=1  INSTR=0x21  ACC=1       ← back at ADD 1
-  PC=1  INSTR=0x21  ACC=2       ← A = 1 + 1 = 2
+  -----------------------------
+  PC=0  INSTR=0x10  ACC=0       <- LDI 0
+  PC=1  INSTR=0x21  ACC=0       <- fetching ADD 1
+  PC=1  INSTR=0x21  ACC=1       <- executed: A = 0 + 1 = 1
+  PC=2  INSTR=0xD1  ACC=1       <- JNZ 1 (A!=0, branching!)
+  PC=1  INSTR=0x21  ACC=1       <- back at ADD 1
+  PC=1  INSTR=0x21  ACC=2       <- A = 1 + 1 = 2
   ...
-  PC=1  INSTR=0x21  ACC=15      ← A = 14 + 1 = 15
-  PC=1  INSTR=0x21  ACC=0       ← A = 15 + 1 = 0 (overflow!)
-  PC=2  INSTR=0xD1  ACC=0       ← JNZ 1 (A=0, NOT branching)
-  PC=3  INSTR=0xF0  ACC=0       ← HLT — CPU stopped!
-  ─────────────────────────────</code></pre>
+  PC=1  INSTR=0x21  ACC=15      <- A = 14 + 1 = 15
+  PC=1  INSTR=0x21  ACC=0       <- A = 15 + 1 = 0 (overflow!)
+  PC=2  INSTR=0xD1  ACC=0       <- JNZ 1 (A=0, NOT branching)
+  PC=3  INSTR=0xF0  ACC=0       <- HLT -- CPU stopped!
+  -----------------------------</code></pre>
   <div class="two-col" style="margin-top: 12px;">
     <div class="box">
       <p class="small"><strong>LEDs (uo_out):</strong></p>
       <pre><code class="language-plaintext" style="font-size: 0.75em;">[3][2][1][0] [C][Z][H][P]
- 0  0  0  0   0  1  0  ·  ← start
- 0  0  0  1   0  0  0  ·
- 0  0  1  0   0  0  0  ·
+ 0  0  0  0   0  1  0  .  <- start
+ 0  0  0  1   0  0  0  .
+ 0  0  1  0   0  0  0  .
  ...counting up...
- 1  1  1  1   0  0  0  ·  ← A=15
- 0  0  0  0   1  1  1  ·  ← halted!</code></pre>
+ 1  1  1  1   0  0  0  .  <- A=15
+ 0  0  0  0   1  1  1  .  <- halted!</code></pre>
     </div>
     <div class="box box-green">
       <p class="small"><strong>What the flags mean:</strong></p>
@@ -1695,7 +2102,7 @@ void loop() {
         <li><strong>C (Carry):</strong> Lit when ADD overflows past 15</li>
         <li><strong>Z (Zero):</strong> Lit when ACC = 0</li>
         <li><strong>H (Halted):</strong> Lit when CPU hit HLT</li>
-        <li><strong>P (Phase):</strong> Blinks 0/1 — fetch/execute</li>
+        <li><strong>P (Phase):</strong> Blinks 0/1 -- fetch/execute</li>
       </ul>
     </div>
   </div>
@@ -1708,30 +2115,30 @@ void loop() {
       <div class="box box-blue">
         <h3>Fibonacci on LEDs</h3>
         <pre><code class="language-python" style="font-size: 0.7em;">program = [
-    0x10,  # LDI 0   → 0
-    0x21,  # ADD 1   → 1
-    0x20,  # ADD 0   → 1
-    0x21,  # ADD 1   → 2
-    0x21,  # ADD 1   → 3
-    0x22,  # ADD 2   → 5
-    0x23,  # ADD 3   → 8
-    0x25,  # ADD 5   → 13
+    0x10,  # LDI 0   -> 0
+    0x21,  # ADD 1   -> 1
+    0x20,  # ADD 0   -> 1
+    0x21,  # ADD 1   -> 2
+    0x21,  # ADD 1   -> 3
+    0x22,  # ADD 2   -> 5
+    0x23,  # ADD 3   -> 8
+    0x25,  # ADD 5   -> 13
     0xF0,  # HLT
 ]</code></pre>
-        <p class="tiny">Watch LEDs show: 0→1→1→2→3→5→8→13</p>
+        <p class="tiny">Watch LEDs show: 0->1->1->2->3->5->8->13</p>
       </div>
     </div>
     <div>
       <div class="box box-green">
         <h3>Knight Rider (shift LED)</h3>
         <pre><code class="language-python" style="font-size: 0.7em;">program = [
-    0x11,  # LDI 1   → 0001
-    0x80,  # SHL     → 0010
-    0x80,  # SHL     → 0100
-    0x80,  # SHL     → 1000
-    0x90,  # SHR     → 0100
-    0x90,  # SHR     → 0010
-    0xA0,  # JMP 0   → loop!
+    0x11,  # LDI 1   -> 0001
+    0x80,  # SHL     -> 0010
+    0x80,  # SHL     -> 0100
+    0x80,  # SHL     -> 1000
+    0x90,  # SHR     -> 0100
+    0x90,  # SHR     -> 0010
+    0xA0,  # JMP 0   -> loop!
     0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00,
     0x00,
@@ -1745,24 +2152,24 @@ void loop() {
 <section>
   <h2>Using DIP Switches as Input</h2>
   <div class="box" style="border-color: #d29922;">
-    <p>The <strong>IN</strong> instruction reads <code>uio[7:4]</code> — connect DIP switches to these pins!</p>
+    <p>The <strong>IN</strong> instruction reads <code>uio[7:4]</code> -- connect DIP switches to these pins!</p>
   </div>
   <pre><code class="language-plaintext" style="font-size: 0.75em;">  DIP Switches                         LEDs
-  ┌───┬───┬───┬───┐                    ┌───┬───┬───┬───┐
-  │ 3 │ 2 │ 1 │ 0 │ ← set a number    │ 3 │ 2 │ 1 │ 0 │ ← see result
-  └─┬─┴─┬─┴─┬─┴─┬─┘                    └─▲─┴─▲─┴─▲─┴─▲─┘
-    │   │   │   │                          │   │   │   │
+  +---+---+---+---+                    +---+---+---+---+
+  | 3 | 2 | 1 | 0 | <- set a number    | 3 | 2 | 1 | 0 | <- see result
+  +-+-+-+-+-+-+-+-+                    +-^-+-^-+-^-+-^-+
+    |   |   |   |                          |   |   |   |
   uio[7] [6] [5] [4]                  uo_out[3] [2] [1] [0]
-    │   │   │   │                          │   │   │   │
-    └───┴───┴───┴──────► ASIC ────────────┴───┴───┴───┘
+    |   |   |   |                          |   |   |   |
+    +---+---+---+------> ASIC ------------+---+---+---+
 
-  Example program — "Double the input":
-  0x0: 0xE0   IN       ← read DIP switches into A
-  0x1: 0x80   SHL      ← shift left = multiply by 2
-  0x2: 0xF0   HLT      ← show result on LEDs
+  Example program -- "Double the input":
+  0x0: 0xE0   IN       <- read DIP switches into A
+  0x1: 0x80   SHL      <- shift left = multiply by 2
+  0x2: 0xF0   HLT      <- show result on LEDs
 
-  Set DIP = 0101 (5) → LEDs show 1010 (10)!
-  Set DIP = 0011 (3) → LEDs show 0110 (6)!</code></pre>
+  Set DIP = 0101 (5) -> LEDs show 1010 (10)!
+  Set DIP = 0011 (3) -> LEDs show 0110 (6)!</code></pre>
 </section>
 
 <section>
@@ -1820,21 +2227,21 @@ void loop() {
       <div class="box box-green">
         <h3>For Demo</h3>
         <ul class="small">
-          <li>Counter at <strong>~2 Hz</strong> — visible counting</li>
-          <li>Knight Rider at <strong>~4 Hz</strong> — nice LED sweep</li>
-          <li>Full speed (<strong>1 MHz</strong>) — instant result</li>
+          <li>Counter at <strong>~2 Hz</strong> -- visible counting</li>
+          <li>Knight Rider at <strong>~4 Hz</strong> -- nice LED sweep</li>
+          <li>Full speed (<strong>1 MHz</strong>) -- instant result</li>
           <li>RP2040 must keep up with clock!</li>
         </ul>
       </div>
     </div>
   </div>
   <div class="box small" style="margin-top: 12px;">
-    <p><strong>How to set clock speed:</strong> The TT board generates the clock from the RP2040. Configure it in the TinyTapeout SDK or set it manually via the RP2040 firmware. Default is typically 10 MHz — slow it down for visual demos!</p>
+    <p><strong>How to set clock speed:</strong> The TT board generates the clock from the RP2040. Configure it in the TinyTapeout SDK or set it manually via the RP2040 firmware. Default is typically 10 MHz -- slow it down for visual demos!</p>
   </div>
 </section>
 
 <!-- ============================================================ -->
-<!-- SUMMARY -->
+<!-- WRAP-UP -->
 <!-- ============================================================ -->
 <section class="section-slide">
   <h1>Wrap-Up</h1>
@@ -1863,7 +2270,7 @@ void loop() {
           <li>219 lines of Verilog</li>
           <li>194 IHP SG13G2 cells</li>
           <li>20 flip-flops + 174 gates</li>
-          <li>2,677 um² (15% of tile)</li>
+          <li>2,677 um2 (15% of tile)</li>
           <li>51/51 tests pass (RTL + GL)</li>
           <li>Ready for fabrication!</li>
         </ul>
@@ -1875,11 +2282,11 @@ void loop() {
 <section>
   <h2>Key Takeaways</h2>
   <ol>
-    <li class="fragment"><strong>CPUs are simple at heart</strong> — fetch, decode, execute, repeat</li>
-    <li class="fragment"><strong>Verilog describes hardware</strong> — think wires and registers, not code</li>
-    <li class="fragment"><strong>Simulation before silicon</strong> — always verify before you fabricate</li>
-    <li class="fragment"><strong>Standard cells are LEGO blocks</strong> — NANDs, NORs, DFFs build anything</li>
-    <li class="fragment"><strong>Open-source silicon is real</strong> — anyone can tape out a chip today</li>
+    <li class="fragment"><strong>CPUs are simple at heart</strong> -- fetch, decode, execute, repeat</li>
+    <li class="fragment"><strong>Verilog describes hardware</strong> -- think wires and registers, not code</li>
+    <li class="fragment"><strong>Simulation before silicon</strong> -- always verify before you fabricate</li>
+    <li class="fragment"><strong>Standard cells are LEGO blocks</strong> -- NANDs, NORs, DFFs build anything</li>
+    <li class="fragment"><strong>Open-source silicon is real</strong> -- anyone can tape out a chip today</li>
   </ol>
 </section>
 
