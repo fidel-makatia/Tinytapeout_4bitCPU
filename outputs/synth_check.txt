@@ -1,0 +1,15 @@
+8. Executing CHECK pass (checking for obvious problems).
+Checking module tt_um_fidel_makatia_4bit_cpu...
+Warning: Wire tt_um_fidel_makatia_4bit_cpu.\uo_out [7] is used but has no driver.
+Warning: Wire tt_um_fidel_makatia_4bit_cpu.\uo_out [6] is used but has no driver.
+Warning: Wire tt_um_fidel_makatia_4bit_cpu.\uo_out [5] is used but has no driver.
+Warning: Wire tt_um_fidel_makatia_4bit_cpu.\uo_out [4] is used but has no driver.
+Warning: Wire tt_um_fidel_makatia_4bit_cpu.\uo_out [3] is used but has no driver.
+Warning: Wire tt_um_fidel_makatia_4bit_cpu.\uo_out [2] is used but has no driver.
+Warning: Wire tt_um_fidel_makatia_4bit_cpu.\uo_out [1] is used but has no driver.
+Warning: Wire tt_um_fidel_makatia_4bit_cpu.\uo_out [0] is used but has no driver.
+Warning: Wire tt_um_fidel_makatia_4bit_cpu.\uio_out [3] is used but has no driver.
+Warning: Wire tt_um_fidel_makatia_4bit_cpu.\uio_out [2] is used but has no driver.
+Warning: Wire tt_um_fidel_makatia_4bit_cpu.\uio_out [1] is used but has no driver.
+Warning: Wire tt_um_fidel_makatia_4bit_cpu.\uio_out [0] is used but has no driver.
+Found and reported 12 problems.
