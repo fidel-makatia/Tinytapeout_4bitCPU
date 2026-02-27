@@ -497,63 +497,7 @@ The opcode decoder splits the 8-bit instruction register and generates control s
 
 The ALU is **purely combinational** — it computes the result every cycle, but the result is only latched into ACC during the EXECUTE phase.
 
-```
-    ┌───────────────────────────────────────────────────┐
-    │                   4-BIT ALU                       │
-    │                                                   │
-    │   ACC[3:0] ──►┌──────┐                           │
-    │               │ 4-BIT│──► sum[3:0]  ──┐          │
-    │   imm[3:0] ──►│ ADDER│──► cout      ──┤          │
-    │               └──────┘                │          │
-    │                                       │          │
-    │   ACC[3:0] ──►┌──────┐               ┌▼────────┐│
-    │               │ 4-BIT│──► diff[3:0]──►│         ││
-    │   imm[3:0] ──►│SUBTR │──► bout     ──►│  RESULT ││
-    │               └──────┘               │   MUX   ││──► next_acc[3:0]
-    │                                      │         ││──► next_carry
-    │   ACC[3:0] ──►─── AND ──► and[3:0]──►│ (16:1)  ││──► next_zero
-    │   imm[3:0] ──►─── AND               │         ││
-    │                                      │ select: ││
-    │   ACC[3:0] ──►─── OR  ──► or[3:0] ──►│ opcode  ││
-    │   imm[3:0] ──►─── OR                │         ││
-    │                                      │         ││
-    │   ACC[3:0] ──►─── XOR ──► xor[3:0]──►│         ││
-    │   imm[3:0] ──►─── XOR               │         ││
-    │                                      │         ││
-    │   ACC[3:0] ──►─── NOT ──► not[3:0]──►│         ││
-    │                                      │         ││
-    │   ACC[3:0] ──►─── SHL ──► shl[3:0]──►│         ││
-    │              (shift left, MSB→carry) │         ││
-    │                                      │         ││
-    │   ACC[3:0] ──►─── SHR ──► shr[3:0]──►│         ││
-    │              (shift right, LSB→carry)│         ││
-    │                                      │         ││
-    │   port_in[3:0] ─────────► in[3:0] ──►│         ││
-    │                                      │         ││
-    │   imm[3:0] ─────────────► ldi[3:0]──►│         ││
-    │                                      └─────────┘│
-    │                                                   │
-    │   Zero detect: NOR(result[3], result[2],         │
-    │                    result[1], result[0]) ──► Z   │
-    └───────────────────────────────────────────────────┘
-
-    4-bit Adder Detail (ripple carry):
-    ┌──────┐  ┌──────┐  ┌──────┐  ┌──────┐
-    │  FA  │──│  FA  │──│  FA  │──│  FA  │──► Cout
-    │ [0]  │  │ [1]  │  │ [2]  │  │ [3]  │
-    └──┬───┘  └──┬───┘  └──┬───┘  └──┬───┘
-       ▼         ▼         ▼         ▼
-    sum[0]    sum[1]    sum[2]    sum[3]
-
-    Full Adder (FA) gate-level:
-         A ──┬──►XOR──┬──►XOR──► Sum
-         B ──┘        │    ▲
-                      │   Cin
-         A ──┬──►AND──┘
-         B ──┘        ├──►OR ──► Cout
-        Cin──┬──►AND──┘
-    (A^B)────┘
-```
+![ALU Diagram](alu2.png)
 
 ### 10.4 Branch Logic
 
@@ -589,40 +533,7 @@ Determines whether to load PC from `imm[3:0]` (branch taken) or `PC+1` (sequenti
 ### 10.5 Fetch-Execute FSM
 
 A single flip-flop (`phase`) controls the 2-cycle pipeline:
-
-```
-    ┌──────────────────────────────────────────────────────┐
-    │              FETCH-EXECUTE STATE MACHINE              │
-    │                                                      │
-    │   reset ──► phase = 0 (FETCH)                        │
-    │                                                      │
-    │   ┌─────────┐         ┌─────────────┐               │
-    │   │  FETCH  │────────►│  EXECUTE    │               │
-    │   │ phase=0 │         │  phase=1    │               │
-    │   │         │◄────────│             │               │
-    │   └─────────┘         └─────────────┘               │
-    │                                                      │
-    │   FETCH (phase=0):             EXECUTE (phase=1):    │
-    │    IR <= ui_in[7:0]            ACC   <= next_acc     │
-    │    phase <= 1                  PC    <= next_pc      │
-    │                                carry <= next_carry   │
-    │                                zero  <= next_zero    │
-    │                                halted<= next_halted  │
-    │                                phase <= 0            │
-    │                                                      │
-    │   HALT check: if halted=1, FSM stops                │
-    │   (clock keeps running, registers frozen)            │
-    └──────────────────────────────────────────────────────┘
-
-    Timing Diagram:
-    ─────────────────────────────────────────────────────────
-    clk     ╱╲__╱╲__╱╲__╱╲__╱╲__╱╲__╱╲__╱╲__╱╲__
-    phase   ___0____1____0____1____0____1____0____
-    action  FETCH EXEC  FETCH EXEC  FETCH EXEC
-             instr0      instr1      instr2
-    PC out   0          1          2
-    ACC      ----  res0  ---- res1  ---- res2
-    ─────────────────────────────────────────────────────────
+![ALU Diagram](alu3.png)
 ```
 
 ### 10.6 Gate-Level Cell Usage (IHP SG13G2)
