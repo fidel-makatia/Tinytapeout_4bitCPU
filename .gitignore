@@ -1,2 +1,6 @@
 *.out
 *.vcd
+tt/
+runs/
+src/user_config.json
+src/config_merged.json
